@@ -85,6 +85,32 @@ huggingface-cli download <your-org>/<your-model-repo> --include "*.safetensors" 
 
 Alternatively, use `curl`/`wget` from your hosted URLs and save to the respective model folder.
 
+## Downloader Script
+
+A simple script is provided to fetch weights based on a manifest file.
+
+- Script: models/download_models.py
+- Manifest: models/weights_manifest.json
+
+Fill each `url` in `weights_manifest.json` with your hosted file URL(s). Optionally set `expected_size` in bytes.
+
+Run a dry-run to verify paths:
+
+```bash
+python models/download_models.py --dry-run
+```
+
+Then perform the actual download:
+
+```bash
+python models/download_models.py
+```
+
+Notes:
+- Existing files will be overwritten if present.
+- Large downloads (e.g., XLM-R ~1.1 GB) may take time.
+- If you prefer Hugging Face, you can keep using `huggingface-cli download` as shown above.
+
 ## Usage (Python example)
 
 If you use Python for inference, you can load a local folder with `transformers`:
