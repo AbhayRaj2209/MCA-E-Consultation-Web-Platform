@@ -1,3 +1,4 @@
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 import React, { useState, useEffect, useRef } from "react";
 import { Home, Download, Printer, Info } from "lucide-react";
 import { Header } from "@/components/layout/Header";
@@ -96,7 +97,7 @@ const DocumentDetails = () => {
   const fetchSummaryLang = async (lang) => {
     setSummaryLoading(true);
     try {
-      const url = `/api/documents/${documentId}/summary?lang=${encodeURIComponent(lang)}`;
+      const url = `${import.meta.env.VITE_API_URL}/api/documents/${documentId}/summary?lang=${encodeURIComponent(lang)}`;
       const res = await fetch(url, { method: 'GET', cache: 'no-store', headers: { Accept: 'application/json' } });
       if (!res.ok) {
         let msg = 'Server did not return a translated summary.';

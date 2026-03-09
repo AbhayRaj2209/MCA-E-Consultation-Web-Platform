@@ -2,12 +2,12 @@
 
 Public platform for citizens to participate in government consultations by viewing documents and submitting feedback.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-**Frontend:** React 18, Vite, TailwindCSS, Shadcn/ui, React Query, Supabase  
+**Frontend:** React 18, Vite, TailwindCSS, Shadcn/ui, React Query, . 
 **Backend:** Node.js, Express, PostgreSQL, Twilio (OTP), Nodemailer, Google TTS
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Frontend Setup
 ```bash
@@ -16,10 +16,10 @@ npm install
 ```
 
 Create `.env` file:
-```env
+.env
 VITE_API_URL=http://localhost:3000
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_key
+DATABASE_URL=
+
 ```
 
 Run server:
