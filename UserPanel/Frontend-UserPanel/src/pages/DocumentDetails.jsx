@@ -140,7 +140,7 @@ const DocumentDetails = () => {
 
   const playAudio = (audioUrl, text) => {
     stopAudio();
-    if (audioUrl) {
+    if (audioUrl && audioUrl.startsWith("http")) {
       try {
           audioRef.current = new Audio(audioUrl);
           // allow cross-origin audio where possible
