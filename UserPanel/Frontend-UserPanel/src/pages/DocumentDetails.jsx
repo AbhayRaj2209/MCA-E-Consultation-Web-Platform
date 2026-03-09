@@ -153,14 +153,19 @@ const DocumentDetails = () => {
             // fallback to TTS below
           };
           const playPromise = audioRef.current.play();
-          if (playPromise && typeof playPromise.then === 'function') {
-            playPromise.then(() => setAudioPlaying(true)).catch((err) => {
-              console.warn('Audio play promise rejected', err);
-              toast({ title: 'Audio blocked', description: 'Browser prevented audio playback. Interact with the page and try again.' });
-            });
-          } else {
-            setAudioPlaying(true);
-          }
+
+if (playPromise && typeof playPromise.then === 'function') {
+  playPromise
+    .then(() => {
+      setAudioPlaying(true);
+    })
+    .catch((err) => {
+      console.warn('Audio blocked until user interaction', err);
+      setAudioPlaying(false);
+    });
+} else {
+  setAudioPlaying(true);
+}
           return;
         } catch (e) {
           console.warn('Audio play failed, falling back to TTS', e);
