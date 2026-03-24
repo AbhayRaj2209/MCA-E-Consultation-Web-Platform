@@ -1,11 +1,19 @@
 import React from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
 export const Header = () => {
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  const handleSearch = (e) => {
+    if (e.key === "Enter" || e.type === "click") {
+      if (searchQuery.trim()) {
+        navigate(`/consultation-listing?search=${searchQuery}`);
+      }
+    }
+  };
 
   return (
     <header className="bg-background border-b">
@@ -13,11 +21,16 @@ export const Header = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            <img
+              src="/image.png"
+              alt="E-Consultation Logo"
+              className="h-10 w-10 rounded-full object-cover"
+            />
             <div>
               <h1 className="text-2xl font-bold text-gov-blue">E-Consultation Platform</h1>
             </div>
           </div>
-          
+
           <div className="text-right">
             <h2 className="text-lg font-semibold text-foreground">EMPOWERING BUSINESS, PROTECTING INVESTORS</h2>
             <div className="flex space-x-2 text-xs mt-1">
@@ -34,15 +47,14 @@ export const Header = () => {
           <div className="flex items-center space-x-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                className="pl-10 w-64" 
+              <Input
+                className="pl-10 w-64"
                 placeholder="Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleSearch}
               />
             </div>
-            
-            <Button onClick={() => window.open('https://saaransh-one.vercel.app/', '_blank')} variant="outline">
-              Sign In / Sign Up
-            </Button>
           </div>
         </div>
       </div>
@@ -59,11 +71,6 @@ export const Header = () => {
             <li>
               <a href="/consultation-listing" className="block px-4 py-3 text-white hover:bg-gov-blue text-sm">
                 Consultation Listing
-              </a>
-            </li>
-            <li>
-              <a href="https://saaransh-one.vercel.app/" className="block px-4 py-3 text-white hover:bg-gov-blue text-sm">
-                Saaransh
               </a>
             </li>
           </ul>

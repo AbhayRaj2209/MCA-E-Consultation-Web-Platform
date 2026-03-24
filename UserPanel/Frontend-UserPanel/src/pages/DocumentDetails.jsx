@@ -140,7 +140,7 @@ const DocumentDetails = () => {
 
   const playAudio = (audioUrl, text) => {
     stopAudio();
-    if (audioUrl && audioUrl.startsWith("http")) {
+    if (audioUrl && (audioUrl.startsWith("http") || audioUrl.startsWith("/api"))) {
       try {
           audioRef.current = new Audio(audioUrl);
           // allow cross-origin audio where possible
@@ -464,6 +464,19 @@ if (playPromise && typeof playPromise.then === 'function') {
           </TabsContent>
 
           <TabsContent value="document-details" className="mt-6">
+            <div className="mb-8 pb-6 border-b-2 border-gray-200">
+              <h2 className="text-3xl font-bold text-[#092044] mb-2">
+                Document Analysis & Feedback
+              </h2>
+              <p className="text-gray-600">
+                Establishment of Indian Multi-Disciplinary Partnership (MDP) Firms - Review the document, read the summary, and submit your valuable feedback
+              </p>
+              <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
+                <span>Posted: 25 March 2026</span>
+                <span>Due: 10 April 2026</span>
+              </div>
+            </div>
+
             <div className="flex items-center justify-end mb-4 space-x-2">
               <Button variant="outline" size="sm">
                 <Printer className="h-4 w-4 mr-1" />
@@ -581,7 +594,7 @@ if (playPromise && typeof playPromise.then === 'function') {
                       <div className="flex items-center space-x-2">
                         <a
                           className="text-sm text-gov-blue underline ml-2 cursor-pointer"
-                          onClick={(e) => { e.preventDefault(); window.open('/digital-competition-bill-2025.pdf', '_blank'); }}
+                          onClick={(e) => { e.preventDefault(); window.open('/publicnotice.pdf', '_blank'); }}
                         >
                           View Full Document
                         </a>
@@ -702,6 +715,10 @@ if (playPromise && typeof playPromise.then === 'function') {
 
               {/* Comment Form */}
               <div>
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold text-[#092044] mb-1">Share Your Feedback</h3>
+                  <p className="text-sm text-gray-600">Submit your valuable comments and suggestions below</p>
+                </div>
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">

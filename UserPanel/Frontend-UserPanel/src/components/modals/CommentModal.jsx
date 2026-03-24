@@ -156,12 +156,21 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
       const data = await response.json();
 
       if (data.success) {
+        // Build sentiment display message
+        let sentimentMessage = "Your comments have been submitted successfully.";
+        if (data.sentiment) {
+          const sentiment = data.sentiment.sentiment || 'neutral';
+          const confidence = data.sentiment.confidence || 0;
+          const confidencePercent = (confidence * 100).toFixed(0);
+          sentimentMessage = `Your comments have been submitted successfully.\n\nSentiment: ${sentiment.charAt(0).toUpperCase() + sentiment.slice(1)} (${confidencePercent}% confidence)`;
+        }
+
         toast({
           title: "Success!",
-          description: "Your comments have been submitted successfully.",
+          description: sentimentMessage,
           variant: "default"
         });
-        onSuccess();
+        onSuccess(data.sentiment);
         onClose();
         setStep('confirm');
         setFormData({

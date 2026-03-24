@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { FileText, TrendingUp, Users, Clock, CheckCircle, AlertTriangle, Star } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,12 +45,36 @@ const Dashboard = () => {
   const activeConsultations = consultations.filter(c => c.status === 'In Progress').length;
   const completedConsultations = consultations.filter(c => c.status === 'Analysis Complete' || c.status === 'Completed').length;
 
-  // Calculate sentiment distribution from recent activity
+  // Calculate sentiment distribution from recent activity (case-insensitive)
   const stanceDistribution = ['Positive', 'Negative', 'Neutral'].map(stance => ({
     name: stance,
-    value: recentActivity.filter(comment => comment.sentiment === stance).length,
+    value: recentActivity.filter(comment =>
+      comment.sentiment?.toLowerCase() === stance.toLowerCase()
+    ).length,
     color: STANCE_COLORS[stance as keyof typeof STANCE_COLORS]
   }));
+
+  // Calculate total and percentages for tooltip
+  const totalComments = recentActivity.length;
+  const stanceWithPercent = stanceDistribution.map(item => ({
+    ...item,
+    percentage: totalComments > 0 ? ((item.value / totalComments) * 100).toFixed(1) : '0'
+  }));
+
+  // Custom tooltip for pie chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-card border rounded-lg shadow-lg p-3">
+          <p className="font-medium" style={{ color: data.color }}>{data.name}</p>
+          <p className="text-sm text-muted-foreground">Count: {data.value}</p>
+          <p className="text-sm font-semibold">{data.percentage}%</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -129,7 +153,7 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={stanceDistribution}
+                  data={stanceWithPercent}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -138,26 +162,23 @@ const Dashboard = () => {
                   dataKey="value"
                   nameKey="name"
                 >
-                  {stanceDistribution.map((entry, index) => (
+                  {stanceWithPercent.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
+                <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex flex-wrap justify-center gap-3 mt-4">
-              {stanceDistribution.map((stance) => {
-                const totalComments = recentActivity.length;
-                const percentage = totalComments > 0 ? ((stance.value / totalComments) * 100).toFixed(1) : '0';
-                return (
-                  <div key={stance.name} className="flex items-center text-sm">
-                    <span
-                      className="w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: stance.color }}
-                    ></span>
-                    <span className="text-muted-foreground">{stance.name}: {percentage}%</span>
-                  </div>
-                );
-              })}
+              {stanceWithPercent.map((stance) => (
+                <div key={stance.name} className="flex items-center text-sm">
+                  <span
+                    className="w-3 h-3 rounded-full mr-2"
+                    style={{ backgroundColor: stance.color }}
+                  ></span>
+                  <span className="text-muted-foreground">{stance.name}: {stance.percentage}%</span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -240,12 +261,12 @@ const Dashboard = () => {
                         <span>{comment.stakeholder_type}</span>
                       </Badge>
                       <Badge
-                        className={`text-xs ${comment.sentiment === 'Positive' ? 'bg-success/10 text-success' :
-                            comment.sentiment === 'Negative' ? 'bg-destructive/10 text-destructive' :
+                        className={`text-xs ${comment.sentiment?.toLowerCase() === 'positive' ? 'bg-success/10 text-success' :
+                            comment.sentiment?.toLowerCase() === 'negative' ? 'bg-destructive/10 text-destructive' :
                               'bg-warning/10 text-warning'
                           }`}
                       >
-                        <span>{comment.sentiment}</span>
+                        <span>{comment.sentiment ? comment.sentiment.charAt(0).toUpperCase() + comment.sentiment.slice(1).toLowerCase() : 'Neutral'}</span>
                       </Badge>
                       <Badge variant="secondary" className="text-xs">
                         {comment.bill}

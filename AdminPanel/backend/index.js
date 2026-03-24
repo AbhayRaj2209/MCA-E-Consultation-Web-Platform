@@ -122,69 +122,56 @@ app.post('/api/comments/:bill', async (req, res) => {
     const documentId = billMap[bill];
 
     // Default values
-    let sentiment = 'Neutral';
-    let confidenceScore = 4.2; // Hardcoded default based on requirements
+    let sentiment = 'neutral';
+    let confidence = 0.0;
+    let strongOpinion = false;
+    let keywords = [];
     let summary = null;
 
-    // Call FastAPI for Sentiment
+    // Call FastAPI for Sentiment Analysis
+    const fastApiUrl = process.env.FASTAPI_URL || 'http://127.0.0.1:8001';
     try {
-      const sentimentResponse = await fetch('http://192.168.1.53:8364/predict_sentiment', {
+      const sentimentResponse = await fetch(`${fastApiUrl}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment: comment_data })
+        body: JSON.stringify({ text: comment_data })
       });
 
       if (sentimentResponse.ok) {
         const data = await sentimentResponse.json();
-        // Response format: { predicted_sentiment: "POSITIVE", ... }
-        if (data.predicted_sentiment) {
-          // Convert POSITIVE -> Positive (Title Case)
-          const s = data.predicted_sentiment;
-          const candidate = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-
-          // Output Validation: Ensure valid sentiment
-          if (['Positive', 'Negative', 'Neutral'].includes(candidate)) {
-            sentiment = candidate;
-          } else {
-            console.warn(`[SECURITY] Invalid sentiment received from model: ${candidate}. Defaulting to Neutral.`);
-            sentiment = 'Neutral';
-          }
+        // Map response fields
+        sentiment = data.sentiment || 'neutral';
+        confidence = data.confidence || 0.0;
+        strongOpinion = data.strong_opinion || false;
+        keywords = data.keywords || [];
+        if (data.processed_text) {
+          summary = data.processed_text;
         }
+
+        // Validate sentiment value
+        const validSentiments = ['positive', 'negative', 'neutral'];
+        if (!validSentiments.includes(sentiment.toLowerCase())) {
+          console.warn(`[SECURITY] Invalid sentiment received from model: ${sentiment}. Defaulting to neutral.`);
+          sentiment = 'neutral';
+        }
+
+        console.log(`Sentiment analysis: ${sentiment} (${(confidence * 100).toFixed(1)}%)`);
       } else {
         const errorText = await sentimentResponse.text();
-        console.warn('Sentiment API returned non-OK status:', sentimentResponse.status, errorText);
+        console.warn('FastAPI service returned non-OK status:', sentimentResponse.status, errorText);
       }
     } catch (e) {
       console.error('Failed to fetch sentiment:', e.message);
-    }
-
-    // Call FastAPI for Summary
-    try {
-      const summaryResponse = await fetch('http://192.168.1.53:8364/api/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comments: [comment_data] }) // Sending as list assuming plural
-      });
-
-      if (summaryResponse.ok) {
-        const data = await summaryResponse.json();
-        // Response format: { summaries: ["..."] }
-        if (data.summaries && data.summaries.length > 0) {
-          summary = data.summaries[0];
-        }
-      } else {
-        const errorText = await summaryResponse.text();
-        console.warn('Summary API returned non-OK status:', summaryResponse.status, errorText);
-      }
-    } catch (e) {
-      console.error('Failed to fetch summary:', e.message);
+      // Fallback to defaults
+      sentiment = 'neutral';
+      confidence = 0.0;
     }
 
     const result = await pool.query(
-      `INSERT INTO ${bill}_comments 
-       (commenter_name, comment_data, sentiment, stakeholder_type, document_id, confidence_score, summary) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [commenter_name, comment_data, sentiment, stakeholder_type || 'Individual', documentId, confidenceScore, summary]
+      `INSERT INTO ${bill}_comments
+       (commenter_name, comment_data, sentiment, stakeholder_type, document_id, confidence, strong_opinion, keywords, summary)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [commenter_name, comment_data, sentiment, stakeholder_type || 'Individual', documentId, confidence, strongOpinion, JSON.stringify(keywords), summary]
     );
 
     res.status(201).json({ ok: true, data: result.rows[0] });
@@ -231,63 +218,62 @@ app.post('/api/submit-comment', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid Document ID' });
     }
 
-    // AI Enrichment
-    let sentiment = userSentiment || 'Neutral';
+    // AI Enrichment - Default values
+    let sentiment = userSentiment || 'neutral';
     let summary = userSummary || null;
-    let confidenceScore = 4.2;
+    let confidence = 0.0;
+    let strongOpinion = false;
+    let keywords = [];
 
+    // Call FastAPI Sentiment Analysis Service
+    const fastApiUrl = process.env.FASTAPI_URL || 'http://127.0.0.1:8001';
     try {
-      // Sentiment
-      const sentimentResponse = await fetch('http://192.168.1.53:8364/predict_sentiment', {
+      const sentimentResponse = await fetch(`${fastApiUrl}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment: commentData })
+        body: JSON.stringify({ text: commentData })
       });
+
       if (sentimentResponse.ok) {
         const data = await sentimentResponse.json();
-        if (data.predicted_sentiment) {
-          const s = data.predicted_sentiment;
-          const candidate = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-          // Output Validation
-          if (['Positive', 'Negative', 'Neutral'].includes(candidate)) {
-            sentiment = candidate;
-          } else {
-            console.warn(`[SECURITY] Invalid sentiment received from model: ${candidate}. Defaulting to Neutral.`);
-            sentiment = 'Neutral';
-          }
+        // Map response fields
+        sentiment = data.sentiment || 'neutral';
+        confidence = data.confidence || 0.0;
+        strongOpinion = data.strong_opinion || false;
+        keywords = data.keywords || [];
+        if (data.processed_text && !summary) {
+          summary = data.processed_text;
         }
-      }
 
-      // Summary
-      const summaryResponse = await fetch('http://192.168.1.53:8364/api/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comments: [commentData] })
-      });
-      if (summaryResponse.ok) {
-        const data = await summaryResponse.json();
-        if (data.summaries && data.summaries.length > 0) {
-          summary = data.summaries[0];
+        // Validate sentiment value
+        const validSentiments = ['positive', 'negative', 'neutral'];
+        if (!validSentiments.includes(sentiment.toLowerCase())) {
+          console.warn(`[SECURITY] Invalid sentiment received from model: ${sentiment}. Defaulting to neutral.`);
+          sentiment = 'neutral';
         }
+
+        console.log(`Sentiment analysis: ${sentiment} (${(confidence * 100).toFixed(1)}%)`);
       }
     } catch (e) {
       console.error('AI Enrichment Failed:', e.message);
-      // Proceed without AI if it fails, fallback to defaults
+      // Fallback to defaults
+      sentiment = 'neutral';
+      confidence = 0.0;
     }
 
     // Insert into DB
     const query = `
       INSERT INTO ${tableName} (
-        document_id, section, comment_data, sentiment, summary, confidence_score,
+        document_id, section, comment_data, sentiment, summary, confidence, strong_opinion, keywords,
         supported_doc, supported_doc_filename,
         commenter_name, commenter_email, commenter_phone, commenter_address,
         id_type, id_number, stakeholder_type
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
     `;
 
     const values = [
-      documentId, section || null, commentData, sentiment, summary, confidenceScore,
+      documentId, section || null, commentData, sentiment, summary, confidence, strongOpinion, JSON.stringify(keywords),
       supportedDocData || null, supportedDocFilename || null,
       commenterName, commenterEmail, commenterPhone, commenterAddress || null,
       idType, idNumber, stakeholderType
@@ -295,7 +281,17 @@ app.post('/api/submit-comment', async (req, res) => {
 
     const result = await pool.query(query, values);
 
-    res.status(201).json({ success: true, message: 'Comment submitted successfully', data: result.rows[0] });
+    res.status(201).json({
+      success: true,
+      message: 'Comment submitted successfully',
+      data: result.rows[0],
+      sentiment: {
+        sentiment: sentiment,
+        confidence: confidence,
+        strong_opinion: strongOpinion,
+        keywords: keywords
+      }
+    });
 
   } catch (err) {
     console.error('Error submitting comment:', err);
@@ -628,6 +624,154 @@ app.get('/api/section-sentiments/:bill', async (req, res) => {
   }
 });
 
+// Admin API: Get all comments with sentiment analysis details and counts
+app.get('/api/admin/comments', async (req, res) => {
+  try {
+    const { bill } = req.query; // Optional bill filter: bill_1, bill_2, bill_3
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
+
+    let comments = [];
+    let sentimentCounts = { positive: 0, negative: 0, neutral: 0 };
+
+    if (bill) {
+      // Single bill query
+      if (!['bill_1', 'bill_2', 'bill_3'].includes(bill)) {
+        return res.status(400).json({ ok: false, error: 'Invalid bill name' });
+      }
+
+      // Get comments with sentiment details
+      const commentsResult = await pool.query(
+        `SELECT
+          comments_id as id,
+          comment_data as text,
+          sentiment,
+          confidence,
+          strong_opinion,
+          keywords,
+          commenter_name,
+          stakeholder_type,
+          section,
+          created_at
+        FROM ${bill}_comments
+        ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+      comments = commentsResult.rows;
+
+      // Get sentiment counts
+      const countsResult = await pool.query(
+        `SELECT
+          LOWER(COALESCE(sentiment, 'neutral')) as sentiment_type,
+          COUNT(*)::int as count
+        FROM ${bill}_comments
+        GROUP BY LOWER(COALESCE(sentiment, 'neutral'))`
+      );
+
+      countsResult.rows.forEach(row => {
+        if (row.sentiment_type === 'positive') sentimentCounts.positive = row.count;
+        else if (row.sentiment_type === 'negative') sentimentCounts.negative = row.count;
+        else sentimentCounts.neutral = row.count;
+      });
+
+    } else {
+      // Aggregate from all bills
+      const aggregateQuery = `
+        SELECT
+          'bill_1' as bill,
+          comments_id as id,
+          comment_data as text,
+          sentiment,
+          confidence,
+          strong_opinion,
+          keywords,
+          commenter_name,
+          stakeholder_type,
+          section,
+          created_at
+        FROM bill_1_comments
+        UNION ALL
+        SELECT
+          'bill_2' as bill,
+          comments_id,
+          comment_data,
+          sentiment,
+          confidence,
+          strong_opinion,
+          keywords,
+          commenter_name,
+          stakeholder_type,
+          section,
+          created_at
+        FROM bill_2_comments
+        UNION ALL
+        SELECT
+          'bill_3' as bill,
+          comments_id,
+          comment_data,
+          sentiment,
+          confidence,
+          strong_opinion,
+          keywords,
+          commenter_name,
+          stakeholder_type,
+          section,
+          created_at
+        FROM bill_3_comments
+        ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
+      `;
+
+      const commentsResult = await pool.query(aggregateQuery, [limit, offset]);
+      comments = commentsResult.rows;
+
+      // Get sentiment counts from all bills
+      const countsQuery = `
+        SELECT sentiment_type, SUM(count)::int as count FROM (
+          SELECT LOWER(COALESCE(sentiment, 'neutral')) as sentiment_type, COUNT(*) as count
+          FROM bill_1_comments GROUP BY LOWER(COALESCE(sentiment, 'neutral'))
+          UNION ALL
+          SELECT LOWER(COALESCE(sentiment, 'neutral')) as sentiment_type, COUNT(*) as count
+          FROM bill_2_comments GROUP BY LOWER(COALESCE(sentiment, 'neutral'))
+          UNION ALL
+          SELECT LOWER(COALESCE(sentiment, 'neutral')) as sentiment_type, COUNT(*) as count
+          FROM bill_3_comments GROUP BY LOWER(COALESCE(sentiment, 'neutral'))
+        ) combined
+        GROUP BY sentiment_type
+      `;
+
+      const countsResult = await pool.query(countsQuery);
+      countsResult.rows.forEach(row => {
+        if (row.sentiment_type === 'positive') sentimentCounts.positive = row.count;
+        else if (row.sentiment_type === 'negative') sentimentCounts.negative = row.count;
+        else sentimentCounts.neutral = row.count;
+      });
+    }
+
+    // Parse keywords JSON for each comment
+    comments = comments.map(comment => ({
+      ...comment,
+      keywords: comment.keywords ? (typeof comment.keywords === 'string' ? JSON.parse(comment.keywords) : comment.keywords) : []
+    }));
+
+    const total = sentimentCounts.positive + sentimentCounts.negative + sentimentCounts.neutral;
+
+    res.json({
+      ok: true,
+      data: {
+        comments,
+        sentimentCounts,
+        total,
+        pagination: { limit, offset }
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching admin comments:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Get consultations metadata (titles, description, dates, status) + submissions count
 app.get('/api/consultations', async (req, res) => {
   try {
@@ -701,6 +845,7 @@ app.listen(PORT, () => {
 
   console.log('  GET  /api/comments/:bill');
   console.log('  POST /api/comments/:bill');
+  console.log('  GET  /api/admin/comments');
   console.log('  GET  /api/sentiment/:bill');
   console.log('  GET  /api/summaries/:bill');
   console.log('  GET  /api/sections/:bill');

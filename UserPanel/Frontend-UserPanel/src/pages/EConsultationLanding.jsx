@@ -2,7 +2,6 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Home,
-  Eye,
   Search,
   Clock,
   FileText,
@@ -14,7 +13,6 @@ import {
 import { Header } from "@/components/layout/Header";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { BadgeCount } from "@/components/ui/badge-count";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 const EConsultationLanding = () => {
@@ -110,13 +108,6 @@ const EConsultationLanding = () => {
                   What is E-Consultation?
                 </h2>
               </div>
-              <Button
-                variant="ghost"
-                className="h-8 text-gray-500 px-3"
-                size="sm"
-              >
-                <Eye className="h-4 w-4 mr-2" /> Hide
-              </Button>
             </div>
 
             <div className="flex-1">
