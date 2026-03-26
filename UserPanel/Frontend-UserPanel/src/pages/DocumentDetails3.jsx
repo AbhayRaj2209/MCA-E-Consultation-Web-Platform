@@ -342,6 +342,22 @@ const DocumentDetails = () => {
           </TabsContent>
 
           <TabsContent value="document-details" className="mt-6">
+<<<<<<< HEAD
+=======
+            <div className="mb-8 pb-6 border-b-2 border-gray-200">
+              <h2 className="text-3xl font-bold text-[#092044] mb-2">
+                Document Analysis & Feedback
+              </h2>
+              <p className="text-gray-600">
+                Companies Amendment Bill, 2025 - Review the document, read the summary, and submit your valuable feedback
+              </p>
+              <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
+                <span>Posted: 27 March 2026</span>
+                <span>Due: 20 April 2026</span>
+              </div>
+            </div>
+
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
             <div className="flex items-center justify-end mb-4 space-x-2">
               <Button variant="outline" size="sm">
                 <Printer className="h-4 w-4 mr-1" />

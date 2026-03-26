@@ -140,7 +140,11 @@ const DocumentDetails = () => {
 
   const playAudio = (audioUrl, text) => {
     stopAudio();
+<<<<<<< HEAD
     if (audioUrl && audioUrl.startsWith("http")) {
+=======
+    if (audioUrl && (audioUrl.startsWith("http") || audioUrl.startsWith("/api"))) {
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
       try {
           audioRef.current = new Audio(audioUrl);
           // allow cross-origin audio where possible
@@ -207,6 +211,7 @@ if (playPromise && typeof playPromise.then === 'function') {
           <h1 className="text-2xl font-bold">E-Consultation</h1>
         </div>
 
+<<<<<<< HEAD
         <div className="bg-white p-5 rounded-xl shadow-sm border mb-6">
           <h3 className="text-lg font-semibold text-gov-blue mb-2">How to use SAARANSH</h3>
           <p className="text-sm text-muted-foreground mb-4">A simple workflow to share your opinion on draft bills and policy proposals.</p>
@@ -228,6 +233,8 @@ if (playPromise && typeof playPromise.then === 'function') {
           </ul>
         </div>
 
+=======
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
         <h2 className="text-xl font-semibold mb-6">
           Establishment of Indian Multi-Disciplinary Partnership (MDP) firms by the Govt of India
         </h2>
@@ -493,6 +500,7 @@ if (playPromise && typeof playPromise.then === 'function') {
                 Establishment of Indian Multi-Disciplinary Partnership (MDP) Firms - Review the document, read the summary, and submit your valuable feedback
               </p>
               <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
+<<<<<<< HEAD
                 <span>📅 Posted: 25 March 2026</span>
                 <span>⏳ Due: 10 April 2026</span>
               </div>
@@ -500,6 +508,53 @@ if (playPromise && typeof playPromise.then === 'function') {
 
             {/* Summary & Quality Score */}
             <Card className="mb-6">
+=======
+                <span>Posted: 25 March 2026</span>
+                <span>Due: 10 April 2026</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end mb-4 space-x-2">
+              <Button variant="outline" size="sm">
+                <Printer className="h-4 w-4 mr-1" />
+                Print
+              </Button>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-1" />
+                Download
+              </Button>
+            </div>
+
+            {/* Document Metadata */}
+            <Card className="mb-6 border-2 border-gray-200">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Document ID</label>
+                    <p className="text-lg font-medium text-gray-900">J34I_D</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Type of Documents</label>
+                    <p className="text-lg font-medium text-gray-900">Report</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Name of Act</label>
+                    <p className="text-lg font-medium text-gray-900">MDP Firms Establishment</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Posted On</label>
+                    <p className="text-lg font-medium text-gray-900">26 November 2025</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Comments due date</label>
+                    <p className="text-lg font-medium text-gray-900">29 December 2025</p>
+                  </div>
+                </div>
+                
+                {/* Summary & Quality Score */}
+                <div className="mt-6">
+                  <Card>
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div>
@@ -584,6 +639,12 @@ if (playPromise && typeof playPromise.then === 'function') {
                       </div>
                     </CardContent>
                   </Card>
+<<<<<<< HEAD
+=======
+                </div>
+              </CardContent>
+            </Card>
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Document Content */}

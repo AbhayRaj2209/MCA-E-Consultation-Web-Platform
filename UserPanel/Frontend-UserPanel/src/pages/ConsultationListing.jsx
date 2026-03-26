@@ -74,14 +74,22 @@ const ConsultationListing = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <Breadcrumb items={breadcrumbItems} />
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
       <main className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <Home className="h-5 w-5 mr-2" />
             <h1 className="text-2xl font-bold">E-Consultation</h1>
           </div>
+<<<<<<< HEAD
           
+=======
+
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
           <div className="flex items-center space-x-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -165,4 +173,8 @@ const ConsultationListing = () => {
 
 
 
+<<<<<<< HEAD
 export default ConsultationListing;
+=======
+export default ConsultationListing;
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f

@@ -16,9 +16,18 @@ const insertQuery = `
     id_type,
     id_number,
     stakeholder_type,
+<<<<<<< HEAD
     created_at,
     updated_at
   ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+=======
+    confidence,
+    strong_opinion,
+    keywords,
+    created_at,
+    updated_at
+  ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW())
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
   RETURNING *;
 `;
 

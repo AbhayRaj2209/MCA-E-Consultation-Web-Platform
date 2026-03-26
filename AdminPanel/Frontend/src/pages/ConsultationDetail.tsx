@@ -604,19 +604,41 @@ const ConsultationDetail = () => {
           }
 
           // Map DB rows to frontend comment model
+<<<<<<< HEAD
           const mapped = (rows || []).map((r: any) => ({
+=======
+          const mapped = (rows || []).map((r: any) => {
+            // Normalize sentiment to Title Case for consistency
+            const rawSentiment = r.sentiment || r.stance || 'neutral';
+            const normalizedStance = rawSentiment.charAt(0).toUpperCase() + rawSentiment.slice(1).toLowerCase();
+
+            return {
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
             id: r.comments_id || r.id || r.comment_id || r.commentsid || Math.random(),
             submitter: r.commenter_name || r.submitter || 'Anonymous',
             stakeholderType: r.stakeholder_type || r.stakeholderType || 'Individual',
             date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : (r.date || ''),
+<<<<<<< HEAD
             stance: r.sentiment || r.stance || 'Neutral',
             summary: r.summary || r.comment_data || (r.comment_data ? String(r.comment_data).slice(0, 200) : ''),
             confidenceScore_based_on_ensemble_model: r.confidence_score || r.confidenceScore_based_on_ensemble_model || 0,
+=======
+            stance: normalizedStance,
+            summary: r.summary || r.comment_data || (r.comment_data ? String(r.comment_data).slice(0, 200) : ''),
+            confidenceScore_based_on_ensemble_model: r.confidence_score || r.confidenceScore_based_on_ensemble_model || 0,
+            confidence: r.confidence || 0,
+            strong_opinion: r.strong_opinion || false,
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
             originalText: r.comment_data || r.originalText || '',
             keywords: r.keywords || [],
             mlModel: r.ml_model || r.model || null,
             consultationId: consultationId
+<<<<<<< HEAD
           }));
+=======
+          };
+          });
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
 
           setComments(mapped);
         } else {

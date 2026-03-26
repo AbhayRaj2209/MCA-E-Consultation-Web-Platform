@@ -1,7 +1,11 @@
 const fetch = require('node-fetch');
 const commentsModel = require('../models/commentsModel');
 
+<<<<<<< HEAD
 // Submit comment/controller: agar ML API configured hai to use call karke enrichment karta hai, phir model se DB me insert karta hai
+=======
+// Submit comment/controller: calls FastAPI for sentiment analysis, then inserts into DB
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
 async function submitComment(req, res, next) {
   try {
     const {
@@ -21,7 +25,11 @@ async function submitComment(req, res, next) {
       supportedDocData
     } = req.body;
 
+<<<<<<< HEAD
     // Zaroori fields ko validate kare
+=======
+    // Validate required fields
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
     if (!documentId || !commenterName || !commenterEmail || !commenterPhone ||
         !idType || !idNumber || !stakeholderType || !commentData) {
       return res.status(400).json({
@@ -31,6 +39,7 @@ async function submitComment(req, res, next) {
       });
     }
 
+<<<<<<< HEAD
     // ML enrichment (optional) — ML metadata set kare
     let predictedSentiment = sentiment || null;
     let predictedSummary = summary || null;
@@ -53,14 +62,65 @@ async function submitComment(req, res, next) {
       } catch (e) {
         console.error('Error calling ML API:', e.message || e);
       }
+=======
+    // Initialize sentiment analysis results with defaults
+    let predictedSentiment = sentiment || 'neutral';
+    let predictedSummary = summary || null;
+    let confidence = 0.0;
+    let strongOpinion = false;
+    let keywords = [];
+
+    // Call FastAPI sentiment analysis service
+    const fastApiUrl = process.env.FASTAPI_URL || 'http://127.0.0.1:8001';
+
+    try {
+      const sentimentResp = await fetch(`${fastApiUrl}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: commentData })
+      });
+
+      if (sentimentResp.ok) {
+        const sentimentData = await sentimentResp.json();
+        // Map FastAPI response to our fields
+        predictedSentiment = sentimentData.sentiment || 'neutral';
+        confidence = sentimentData.confidence || 0.0;
+        strongOpinion = sentimentData.strong_opinion || false;
+        keywords = sentimentData.keywords || [];
+
+        // Use processed_text as summary if available
+        if (sentimentData.processed_text) {
+          predictedSummary = sentimentData.processed_text;
+        }
+
+        console.log(`Sentiment analysis: ${predictedSentiment} (${(confidence * 100).toFixed(1)}%)`);
+      } else {
+        console.warn('FastAPI sentiment service responded with status', sentimentResp.status);
+        // Fallback to neutral
+        predictedSentiment = 'neutral';
+        confidence = 0.0;
+      }
+    } catch (e) {
+      console.error('Error calling FastAPI sentiment service:', e.message || e);
+      // Fallback if FastAPI not reachable
+      predictedSentiment = 'neutral';
+      confidence = 0.0;
+      strongOpinion = false;
+      keywords = [];
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
     }
 
     const values = [
       documentId,
       section || null,
       commentData,
+<<<<<<< HEAD
       predictedSentiment || null,
       predictedSummary || null,
+=======
+      predictedSentiment,
+      predictedSummary,
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
       supportedDocData || null,
       supportedDocFilename || null,
       commenterName,
@@ -69,12 +129,34 @@ async function submitComment(req, res, next) {
       commenterAddress || null,
       idType,
       idNumber,
+<<<<<<< HEAD
       stakeholderType
+=======
+      stakeholderType,
+      confidence,
+      strongOpinion,
+      JSON.stringify(keywords)
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
     ];
 
     const result = await commentsModel.insertComment(values);
 
+<<<<<<< HEAD
     res.status(201).json({ success: true, message: 'Comment submitted successfully', data: result });
+=======
+    // Return sentiment data in response for frontend display
+    res.status(201).json({
+      success: true,
+      message: 'Comment submitted successfully',
+      data: result,
+      sentiment: {
+        sentiment: predictedSentiment,
+        confidence: confidence,
+        strong_opinion: strongOpinion,
+        keywords: keywords
+      }
+    });
+>>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
   } catch (error) {
     next(error);
   }
