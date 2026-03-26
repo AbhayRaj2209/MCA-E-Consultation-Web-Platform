@@ -772,68 +772,203 @@ app.get('/api/admin/comments', async (req, res) => {
   }
 });
 
-// Get consultations metadata (titles, description, dates, status) + submissions count
-app.get('/api/consultations', async (req, res) => {
-  try {
-    const bills = [
-      {
-        id: 1,
-        bill_key: 'bill_1',
-        title: 'Establishment of Indian Multi-Disciplinary Partnership (MDP) firms by the Govt. of India',
-        status: 'In Progress',
-        endDate: '2025-10-10',
-        description: 'New guidelines for CSR implementation and reporting',
-        publishDate: '2025-09-01'
-      },
-      {
-        id: 2,
-        bill_key: 'bill_2',
-        title: 'Digital Competition Bill, 2025',
-        status: 'Completed',
-        endDate: '2025-08-31',
-        description: 'Proposed amendments to strengthen corporate governance and transparency',
-        publishDate: '2025-07-15'
-      },
-      {
-        id: 3,
-        bill_key: 'bill_3',
-        title: 'Companies Amendment Bill, 2025',
-        status: 'Completed',
-        endDate: '2025-07-15',
-        description: 'Amendments to improve the insolvency resolution process',
-        publishDate: '2025-06-01'
-      }
-    ];
+// Helper to provide fallback static consultations (legacy behavior)
+async function getDefaultConsultations() {
+  const bills = [
+    {
+      id: 1,
+      bill_key: 'bill_1',
+      title: 'Establishment of Indian Multi-Disciplinary Partnership (MDP) firms by the Govt. of India',
+      status: 'In Progress',
+      endDate: '2025-10-10',
+      description: 'New guidelines for CSR implementation and reporting',
+      publishDate: '2025-09-01'
+    },
+    {
+      id: 2,
+      bill_key: 'bill_2',
+      title: 'Digital Competition Bill, 2025',
+      status: 'Completed',
+      endDate: '2025-08-31',
+      description: 'Proposed amendments to strengthen corporate governance and transparency',
+      publishDate: '2025-07-15'
+    },
+    {
+      id: 3,
+      bill_key: 'bill_3',
+      title: 'Companies Amendment Bill, 2025',
+      status: 'Completed',
+      endDate: '2025-07-15',
+      description: 'Amendments to improve the insolvency resolution process',
+      publishDate: '2025-06-01'
+    }
+  ];
 
-    // For each bill, query count of comments
-    const results = [];
-    for (const b of bills) {
-      const countQuery = `SELECT COUNT(*)::int AS count FROM ${b.bill_key}_comments`;
-      let count = 0;
-      try {
-        const r = await pool.query(countQuery);
-        count = r.rows[0]?.count || 0;
-      } catch (e) {
-        // If table doesn't exist or error, treat as zero and continue
-        console.warn(`Could not get count for ${b.bill_key}:`, e.message || e);
-        count = 0;
-      }
-
-      results.push({
-        id: b.id,
-        bill: b.bill_key,
-        title: b.title,
-        status: b.status,
-        submissions: count,
-        endDate: b.endDate,
-        description: b.description,
-        publishDate: b.publishDate
-      });
+  const results = [];
+  for (const b of bills) {
+    const countQuery = `SELECT COUNT(*)::int AS count FROM ${b.bill_key}_comments`;
+    let count = 0;
+    try {
+      const r = await pool.query(countQuery);
+      count = r.rows[0]?.count || 0;
+    } catch (e) {
+      console.warn(`Could not get count for ${b.bill_key}:`, e.message || e);
+      count = 0;
     }
 
+    results.push({
+      id: b.id,
+      bill_key: b.bill_key,
+      title: b.title,
+      status: b.status,
+      submissions: count,
+      endDate: b.endDate,
+      description: b.description,
+      publishDate: b.publishDate
+    });
+  }
+
+  return results;
+}
+
+// Get consultations metadata (titles, description, dates, status) + submissions count (documents-backed preferred)
+app.get('/api/consultations', async (req, res) => {
+  try {
+    const docResult = await pool.query(
+      `SELECT document_id, type_of_document, type_of_act, posted_on, comments_due_date, document_name, summary, positive_summary, negative_summary, created_at
+       FROM documents
+       ORDER BY created_at DESC`
+    );
+
+    if (docResult.rows.length > 0) {
+      const consultations = await Promise.all(docResult.rows.map(async (doc) => {
+        let submissions = 0;
+        const billKey = `bill_${doc.document_id}`;
+
+        if (doc.document_id && doc.document_id <= 3) {
+          try {
+            const countRes = await pool.query(`SELECT COUNT(*)::int AS count FROM ${billKey}_comments`);
+            submissions = countRes.rows[0]?.count || 0;
+          } catch (e) {
+            submissions = 0;
+          }
+        }
+
+        const status = doc.comments_due_date
+          ? (new Date(doc.comments_due_date) >= new Date() ? 'In Progress' : 'Completed')
+          : 'Draft';
+
+        return {
+          id: doc.document_id,
+          bill_key: billKey,
+          title: doc.document_name,
+          status,
+          endDate: doc.comments_due_date ? doc.comments_due_date.toISOString().split('T')[0] : null,
+          description: doc.type_of_act || doc.summary || null,
+          publishDate: doc.posted_on ? doc.posted_on.toISOString().split('T')[0] : null,
+          submissions,
+          summary: doc.summary || null,
+          created_at: doc.created_at
+        };
+      }));
+
+      return res.json({ ok: true, data: consultations });
+    }
+
+    const results = await getDefaultConsultations();
     res.json({ ok: true, data: results });
+
   } catch (err) {
     console.error('Error fetching consultations:', err);
+    try {
+      const results = await getDefaultConsultations();
+      res.json({ ok: true, data: results });
+    } catch (_) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  }
+});
+
+// Get all documents (for admin management)
+app.get('/api/documents', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT document_id, type_of_document, type_of_act, posted_on, comments_due_date, document_name, document_data, summary, supported_document, overall_wc, positive_wc, negative_wc, neutral_wc, wordcount_json, created_at, updated_at
+      FROM documents
+      ORDER BY created_at DESC
+    `);
+
+    res.json({ ok: true, data: result.rows });
+  } catch (err) {
+    console.error('Error fetching documents:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Add a new document/consultation
+app.post('/api/documents', async (req, res) => {
+  try {
+    const {
+      type_of_document,
+      type_of_act,
+      posted_on,
+      comments_due_date,
+      document_name,
+      document_data,
+      summary,
+      supported_document,
+      overall_wc,
+      positive_wc,
+      negative_wc,
+      neutral_wc,
+      wordcount_json
+    } = req.body;
+
+    if (!document_name || !document_data) {
+      return res.status(400).json({ ok: false, error: 'document_name and document_data are required' });
+    }
+
+    const insertQuery = `
+      INSERT INTO documents (
+        type_of_document,
+        type_of_act,
+        posted_on,
+        comments_due_date,
+        document_name,
+        document_data,
+        summary,
+        supported_document,
+        overall_wc,
+        positive_wc,
+        negative_wc,
+        neutral_wc,
+        wordcount_json,
+        created_at,
+        updated_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
+      RETURNING *
+    `;
+
+    const values = [
+      type_of_document || null,
+      type_of_act || null,
+      posted_on || null,
+      comments_due_date || null,
+      document_name,
+      document_data,
+      summary || null,
+      supported_document || null,
+      overall_wc || null,
+      positive_wc || null,
+      negative_wc || null,
+      neutral_wc || null,
+      wordcount_json || null
+    ];
+
+    const result = await pool.query(insertQuery, values);
+    res.status(201).json({ ok: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('Error creating document:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, TrendingUp, Users } from 'lucide-react';
+import { Home, TrendingUp, Users, FileText } from 'lucide-react';
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -82,6 +82,20 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) => {
             >
               <TrendingUp size={18} className="mr-3" />
               <span>Trend Analysis</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/consultations"
+              onClick={handleLinkClick}
+              className={`flex items-center p-3 my-1 rounded-lg transition-colors text-sm ${
+                location.pathname === '/consultations' 
+                  ? 'bg-blue-100 text-blue-800 font-semibold' 
+                  : 'hover:bg-slate-200 text-slate-700'
+              }`}
+            >
+              <FileText size={18} className="mr-3" />
+              <span>All Consultations</span>
             </Link>
           </li>
         </ul>
