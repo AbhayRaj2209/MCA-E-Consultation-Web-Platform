@@ -55,10 +55,6 @@ export const Header = () => {
                 onKeyPress={handleSearch}
               />
             </div>
-<<<<<<< HEAD
-
-=======
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
           </div>
         </div>
       </div>

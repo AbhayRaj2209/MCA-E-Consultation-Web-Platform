@@ -1,10 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-<<<<<<< HEAD
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-=======
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
 import { FileText, TrendingUp, Users, Clock, CheckCircle, AlertTriangle, Star } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,15 +45,6 @@ const Dashboard = () => {
   const activeConsultations = consultations.filter(c => c.status === 'In Progress').length;
   const completedConsultations = consultations.filter(c => c.status === 'Analysis Complete' || c.status === 'Completed').length;
 
-<<<<<<< HEAD
-  // Calculate sentiment distribution from recent activity
-  const stanceDistribution = ['Positive', 'Negative', 'Neutral'].map(stance => ({
-    name: stance,
-    value: recentActivity.filter(comment => comment.sentiment === stance).length,
-    color: STANCE_COLORS[stance as keyof typeof STANCE_COLORS]
-  }));
-
-=======
   // Calculate sentiment distribution from recent activity (case-insensitive)
   const stanceDistribution = ['Positive', 'Negative', 'Neutral'].map(stance => ({
     name: stance,
@@ -89,7 +76,6 @@ const Dashboard = () => {
     return null;
   };
 
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'Analysis Complete':
@@ -136,11 +122,7 @@ const Dashboard = () => {
       <div className="bg-gradient-secondary rounded-xl p-8 border text-foreground">
         <h1 className="text-3xl font-bold mb-2">Project Saaransh Dashboard</h1>
         <p className="text-muted-foreground text-lg">
-<<<<<<< HEAD
-          AI-powered E-Consultation sentiment analysis Platform
-=======
           AI-powered sentiment analysis for MCA e-consultation feedback
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
         </p>
         <div className="flex flex-wrap gap-4 mt-6">
           <div className="bg-card rounded-lg p-4 border">
@@ -171,11 +153,7 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-<<<<<<< HEAD
-                  data={stanceDistribution}
-=======
                   data={stanceWithPercent}
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -184,28 +162,6 @@ const Dashboard = () => {
                   dataKey="value"
                   nameKey="name"
                 >
-<<<<<<< HEAD
-                  {stanceDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-wrap justify-center gap-3 mt-4">
-              {stanceDistribution.map((stance) => {
-                const totalComments = recentActivity.length;
-                const percentage = totalComments > 0 ? ((stance.value / totalComments) * 100).toFixed(1) : '0';
-                return (
-                  <div key={stance.name} className="flex items-center text-sm">
-                    <span
-                      className="w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: stance.color }}
-                    ></span>
-                    <span className="text-muted-foreground">{stance.name}: {percentage}%</span>
-                  </div>
-                );
-              })}
-=======
                   {stanceWithPercent.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
@@ -223,7 +179,6 @@ const Dashboard = () => {
                   <span className="text-muted-foreground">{stance.name}: {stance.percentage}%</span>
                 </div>
               ))}
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
             </div>
           </CardContent>
         </Card>
@@ -306,21 +261,12 @@ const Dashboard = () => {
                         <span>{comment.stakeholder_type}</span>
                       </Badge>
                       <Badge
-<<<<<<< HEAD
-                        className={`text-xs ${comment.sentiment === 'Positive' ? 'bg-success/10 text-success' :
-                            comment.sentiment === 'Negative' ? 'bg-destructive/10 text-destructive' :
-                              'bg-warning/10 text-warning'
-                          }`}
-                      >
-                        <span>{comment.sentiment}</span>
-=======
                         className={`text-xs ${comment.sentiment?.toLowerCase() === 'positive' ? 'bg-success/10 text-success' :
                             comment.sentiment?.toLowerCase() === 'negative' ? 'bg-destructive/10 text-destructive' :
                               'bg-warning/10 text-warning'
                           }`}
                       >
                         <span>{comment.sentiment ? comment.sentiment.charAt(0).toUpperCase() + comment.sentiment.slice(1).toLowerCase() : 'Neutral'}</span>
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
                       </Badge>
                       <Badge variant="secondary" className="text-xs">
                         {comment.bill}

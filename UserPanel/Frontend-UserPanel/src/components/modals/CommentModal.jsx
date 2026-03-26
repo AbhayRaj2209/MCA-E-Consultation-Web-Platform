@@ -156,14 +156,6 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
       const data = await response.json();
 
       if (data.success) {
-<<<<<<< HEAD
-        toast({
-          title: "Success!",
-          description: "Your comments have been submitted successfully.",
-          variant: "default"
-        });
-        onSuccess();
-=======
         // Build sentiment display message
         let sentimentMessage = "Your comments have been submitted successfully.";
         if (data.sentiment) {
@@ -179,7 +171,6 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
           variant: "default"
         });
         onSuccess(data.sentiment);
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
         onClose();
         setStep('confirm');
         setFormData({

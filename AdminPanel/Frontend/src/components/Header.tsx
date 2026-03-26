@@ -115,11 +115,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
             Project Saaransh
           </h1>
           <p className="text-xs text-slate-600 hidden sm:block">
-<<<<<<< HEAD
-            AI-powered E-Consultation sentiment analysis Platform
-=======
             AI-powered sentiment analysis for MCA e-consultation feedback
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
           </p>
         </div>
       </div>
