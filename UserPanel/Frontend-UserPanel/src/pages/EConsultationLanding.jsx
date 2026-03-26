@@ -13,10 +13,7 @@ import {
 import { Header } from "@/components/layout/Header";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { BadgeCount } from "@/components/ui/badge-count";
-<<<<<<< HEAD
 import { Button } from "@/components/ui/button";
-=======
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
 import { Card, CardContent } from "@/components/ui/card";
 
 const EConsultationLanding = () => {
@@ -157,7 +154,6 @@ const EConsultationLanding = () => {
           </div>
         </div>
 
-<<<<<<< HEAD
         {/* SAARANSH features and user workflow */}
         <section className="mt-8 bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-2xl font-bold text-[#092044] mb-4">SAARANSH: How it works</h2>
@@ -193,8 +189,6 @@ const EConsultationLanding = () => {
           </ul>
         </section>
 
-=======
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
         {/* List of documents - Enhanced */}
         <section className="mt-12">
           <div className="flex items-center gap-4 mb-8">

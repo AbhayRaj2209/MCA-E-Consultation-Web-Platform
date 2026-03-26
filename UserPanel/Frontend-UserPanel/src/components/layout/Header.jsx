@@ -22,7 +22,6 @@ export const Header = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <img
-<<<<<<< HEAD
               src="/src/assets/goi-logo.png"
               alt="Project Saaransh Logo"
               className="h-10 w-10 object-cover"
@@ -32,18 +31,6 @@ export const Header = () => {
               <p className="text-xs text-slate-600">AI-powered E-Consultation sentiment analysis Platform</p>
             </div>
           </div>
-          
-=======
-              src="/image.png"
-              alt="E-Consultation Logo"
-              className="h-10 w-10 rounded-full object-cover"
-            />
-            <div>
-              <h1 className="text-2xl font-bold text-gov-blue">E-Consultation Platform</h1>
-            </div>
-          </div>
-
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
           <div className="text-right">
             <h2 className="text-lg font-semibold text-foreground">EMPOWERING BUSINESS, PROTECTING INVESTORS</h2>
             <div className="flex space-x-2 text-xs mt-1">

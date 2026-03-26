@@ -9,19 +9,12 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
-<<<<<<< HEAD
     "allowImportingTsExtensions": true,
-=======
-    "allowImportingTsExtensions": false,
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-<<<<<<< HEAD
-=======
     "allowJs": true,
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
 
     /* Linting */
     "strict": false,
