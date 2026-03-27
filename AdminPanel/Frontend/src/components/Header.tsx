@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, Menu, X, User, Settings, Shield, LogOut, MapPin, Download } from 'lucide-react';
+import { Search, Bell, Menu, X, User, Settings, Shield, LogOut, MapPin, Download, FileText, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,14 +9,35 @@ interface HeaderProps {
   isSidebarOpen: boolean;
 }
 
+interface SearchResult {
+  id: string;
+  title: string;
+  type: 'consultation' | 'analysis' | 'report';
+  icon?: React.ReactNode;
+  path?: string;
+}
+
 const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user, userSession, logout } = useAuth();
+
+  // Mock search data - replace with actual API call if needed
+  const mockSearchData: SearchResult[] = [
+    { id: '1', title: 'Establishment of Indian Multi-Disciplinary Partnership', type: 'consultation', icon: <FileText size={16} />, path: '/consultation/1' },
+    { id: '2', title: 'Insolvency & Bankruptcy Code Consultation', type: 'consultation', icon: <FileText size={16} />, path: '/consultation/2' },
+    { id: '3', title: 'Corporate Governance Guidelines', type: 'consultation', icon: <FileText size={16} />, path: '/consultation/3' },
+    { id: '4', title: 'Sentiment Analysis Report - Q4 2025', type: 'report', icon: <BarChart3 size={16} />, path: '/reports/1' },
+    { id: '5', title: 'Stakeholder Engagement Dashboard', type: 'analysis', icon: <BarChart3 size={16} />, path: '/analytics' },
+    { id: '6', title: 'Foreign Investment Policy Review', type: 'consultation', icon: <FileText size={16} />, path: '/consultation/4' },
+  ];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -25,6 +46,9 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
       }
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setIsNotificationOpen(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
       }
     };
 
@@ -88,11 +112,39 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setIsSearchOpen(true);
+    
+    if (!value.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    // Filter mock data - replace with actual API call if needed
+    const filtered = mockSearchData.filter(item =>
+      item.title.toLowerCase().includes(value.toLowerCase())
+    );
+    setSearchResults(filtered);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setIsSearchOpen(false);
+      setSearchQuery('');
+      setSearchResults([]);
     }
+  };
+
+  const handleSelectResult = (result: SearchResult) => {
+    if (result.path) {
+      navigate(result.path);
+    }
+    setSearchQuery('');
+    setSearchResults([]);
+    setIsSearchOpen(false);
   };
 
   return (
@@ -115,7 +167,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
             Project Saaransh
           </h1>
           <p className="text-xs text-slate-600 hidden sm:block">
-            AI-powered sentiment analysis for MCA e-consultation feedback
+            AI-powered sentiment analysis for e-consultation feedback
           </p>
         </div>
       </div>
@@ -131,15 +183,62 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
           Export Reports
         </Button>
         
-        <div className="hidden sm:block relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-slate-100 rounded-lg pl-10 pr-4 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="hidden sm:block relative" ref={searchRef}>
+          <form onSubmit={handleSearchSubmit}>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search consultations, reports..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onFocus={() => searchQuery && setIsSearchOpen(true)}
+              className="bg-slate-100 rounded-lg pl-10 pr-4 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </form>
+
+          {isSearchOpen && searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden z-50">
+              <div className="max-h-80 overflow-y-auto">
+                {searchResults.map((result) => (
+                  <button
+                    key={result.id}
+                    onClick={() => handleSelectResult(result)}
+                    className="w-full px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 text-left flex items-start gap-3 transition-colors"
+                  >
+                    <div className="text-slate-400 mt-0.5">
+                      {result.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">
+                        {result.title}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {result.type.charAt(0).toUpperCase() + result.type.slice(1)}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {searchResults.length > 0 && (
+                <div className="p-3 border-t border-slate-200 text-center">
+                  <button
+                    onClick={handleSearchSubmit}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    View all results for "{searchQuery}"
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isSearchOpen && searchQuery && searchResults.length === 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-50">
+              <p className="text-sm text-slate-500 text-center">
+                No results found for "{searchQuery}"
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="relative" ref={notificationRef}>

@@ -5,8 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts';
-import { STANCE_BG_COLORS } from '@/data/mockData';
 import { useEffect, useState } from 'react';
+
+const normalizeStakeholderType = (value: string | null | undefined): string => {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return 'Individual';
+  if (raw === 'individual' || raw === 'indv') return 'Individual';
+  if (raw === 'industry' || raw === 'industry body' || raw.includes('industry body')) return 'Industry Body';
+  if (raw === 'ngo' || raw === 'n.g.o') return 'NGO';
+  if (raw === 'law' || raw === 'law firm' || raw === 'legal') return 'Law Firm';
+  if (raw === 'consulting' || raw === 'consulting firm' || raw === 'consultant') return 'Consulting Firm';
+  if (raw === 'nri') return 'NRI';
+  return raw
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
 
 const StakeholderAnalytics = () => {
   const [allComments, setAllComments] = useState<any[]>([]);
@@ -35,27 +50,32 @@ const StakeholderAnalytics = () => {
 
         // Combine all rows from all bills
         const allRows = [
-          ...(bill1Json.ok ? bill1Json.data.map((r: any) => ({ ...r, bill: 'bill_1' })) : []),
-          ...(bill2Json.ok ? bill2Json.data.map((r: any) => ({ ...r, bill: 'bill_2' })) : []),
-          ...(bill3Json.ok ? bill3Json.data.map((r: any) => ({ ...r, bill: 'bill_3' })) : [])
+          ...(bill1Res.ok && Array.isArray(bill1Json.data) ? bill1Json.data.map((r: any) => ({ ...r, bill: 'bill_1', billId: 1 })) : []),
+          ...(bill2Res.ok && Array.isArray(bill2Json.data) ? bill2Json.data.map((r: any) => ({ ...r, bill: 'bill_2', billId: 2 })) : []),
+          ...(bill3Res.ok && Array.isArray(bill3Json.data) ? bill3Json.data.map((r: any) => ({ ...r, bill: 'bill_3', billId: 3 })) : [])
         ];
 
         // Map DB rows to frontend comment model
-        const mapped = allRows.map((r: any) => ({
+        const mapped = allRows.map((r: any) => {
+          const rawSentiment = String(r.sentiment || r.stance || 'neutral').toLowerCase();
+          const normalizedStance = rawSentiment.charAt(0).toUpperCase() + rawSentiment.slice(1);
+
+          return {
           id: r.comments_id || r.id || r.comment_id || Math.random(),
           submitter: r.commenter_name || r.submitter || 'Anonymous',
-          stakeholderType: r.stakeholder_type || r.stakeholderType || 'Individual',
+          stakeholderType: normalizeStakeholderType(r.stakeholder_type || r.stakeholderType || 'Individual'),
           date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : (r.date || ''),
-          stance: r.sentiment || r.stance || 'Neutral',
+          stance: normalizedStance,
           summary: r.comment_data || r.summary || '',
-          confidenceScore_based_on_ensemble_model: r.confidence_score || r.confidenceScore_based_on_ensemble_model || 0,
+          confidenceScore_based_on_ensemble_model: r.confidence_score || r.confidence || r.confidenceScore_based_on_ensemble_model || 0,
           originalText: r.comment_data || r.originalText || '',
           keywords: r.keywords || [],
-          consultationId: r.bill || null
-        }));
+          consultationId: r.billId || r.consultationId || null
+        };
+        });
 
         setAllComments(mapped);
-        setConsultations(consultJson.ok ? consultJson.data : []);
+        setConsultations(consultRes.ok && Array.isArray(consultJson.data) ? consultJson.data : []);
       } catch (e) {
         console.error('Error loading stakeholder analytics data', e);
         setAllComments([]);
@@ -69,15 +89,13 @@ const StakeholderAnalytics = () => {
   }, []);
   
   const stakeholderTypes = allComments.reduce((acc, comment) => {
-    // Normalize stakeholder type: trim whitespace and ensure consistent capitalization
-    const normalizedType = (comment.stakeholderType || 'Individual').trim();
+    const normalizedType = normalizeStakeholderType(comment.stakeholderType || 'Individual');
     acc[normalizedType] = (acc[normalizedType] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   const stanceByType = allComments.reduce((acc, comment) => {
-    // Normalize stakeholder type: trim whitespace and ensure consistent capitalization
-    const normalizedType = (comment.stakeholderType || 'Individual').trim();
+    const normalizedType = normalizeStakeholderType(comment.stakeholderType || 'Individual');
     if (!acc[normalizedType]) {
       acc[normalizedType] = {};
     }
@@ -91,11 +109,12 @@ const StakeholderAnalytics = () => {
 
   const averageQualityByType = Object.entries(
     allComments.reduce((acc, comment) => {
-      if (!acc[comment.stakeholderType]) {
-        acc[comment.stakeholderType] = { total: 0, count: 0 };
+      const normalizedType = normalizeStakeholderType(comment.stakeholderType || 'Individual');
+      if (!acc[normalizedType]) {
+        acc[normalizedType] = { total: 0, count: 0 };
       }
-      acc[comment.stakeholderType].total += comment.confidenceScore_based_on_ensemble_model;
-      acc[comment.stakeholderType].count += 1;
+      acc[normalizedType].total += comment.confidenceScore_based_on_ensemble_model;
+      acc[normalizedType].count += 1;
       return acc;
     }, {} as Record<string, { total: number; count: number }>)
   ).map(([type, data]: [string, { total: number; count: number }]) => ({
@@ -103,13 +122,52 @@ const StakeholderAnalytics = () => {
     average: (data.total / data.count).toFixed(1)
   }));
 
-  // Engagement data for charts
-  const engagementData = [
-    { name: 'Jul', submissions: 2, quality: 4.2 },
-    { name: 'Aug', submissions: 5, quality: 4.1 },
-    { name: 'Sep', submissions: 1, quality: 4.3 },
-    { name: 'Oct', submissions: 0, quality: 4.4 }
-  ];
+  const avgConfidenceRaw = allComments.length > 0
+    ? allComments.reduce((sum, c) => sum + Number(c.confidenceScore_based_on_ensemble_model || 0), 0) / allComments.length
+    : 0;
+  const avgConfidencePercent = avgConfidenceRaw <= 1 ? avgConfidenceRaw * 100 : avgConfidenceRaw;
+  const avgConfidenceDisplay = `${avgConfidencePercent.toFixed(1)}%`;
+
+  const activeConsultationCount = consultations.filter((c: any) => {
+    const status = String(c.status || '').toLowerCase();
+    return status.includes('progress') || status.includes('active') || status.includes('open');
+  }).length;
+  const engagementRate = consultations.length > 0
+    ? ((activeConsultationCount / consultations.length) * 100).toFixed(1)
+    : '0.0';
+
+  // Build monthly engagement directly from live DB comments
+  const monthMap = allComments.reduce((acc, comment) => {
+    const rawDate = comment.date || comment.created_at;
+    if (!rawDate) return acc;
+    const dt = new Date(rawDate);
+    if (Number.isNaN(dt.getTime())) return acc;
+
+    const month = dt.toLocaleString('en-US', { month: 'short' });
+    if (!acc[month]) {
+      acc[month] = { submissions: 0, confidenceTotal: 0, confidenceCount: 0 };
+    }
+
+    acc[month].submissions += 1;
+    const score = Number(comment.confidenceScore_based_on_ensemble_model || 0);
+    if (!Number.isNaN(score)) {
+      acc[month].confidenceTotal += score;
+      acc[month].confidenceCount += 1;
+    }
+    return acc;
+  }, {} as Record<string, { submissions: number; confidenceTotal: number; confidenceCount: number }>);
+
+  const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const engagementData = Object.entries(monthMap)
+    .sort((a, b) => monthOrder.indexOf(a[0]) - monthOrder.indexOf(b[0]))
+    .map(([name, val]) => {
+      const avg = val.confidenceCount > 0 ? val.confidenceTotal / val.confidenceCount : 0;
+      return {
+        name,
+        submissions: val.submissions,
+        quality: avg <= 1 ? Number((avg * 100).toFixed(1)) : Number(avg.toFixed(1))
+      };
+    });
 
   // Convert stakeholder types to chart format
   const stakeholderStats = Object.entries(stakeholderTypes).map(([type, count]) => ({
@@ -197,12 +255,12 @@ const StakeholderAnalytics = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Confidence Score</p>
                 <p className="text-2xl font-bold">
-                  4.2
+                  {avgConfidenceDisplay}
                 </p>
               </div>
               <Award className="h-8 w-8 text-success" />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Out of 5.0</p>
+            <p className="text-xs text-muted-foreground mt-2">Model confidence from live submissions</p>
           </CardContent>
         </Card>
 
@@ -211,11 +269,11 @@ const StakeholderAnalytics = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Engagement Rate</p>
-                <p className="text-2xl font-bold">94.2%</p>
+                <p className="text-2xl font-bold">{engagementRate}%</p>
               </div>
               <TrendingUp className="h-8 w-8 text-warning" />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Stakeholder participation</p>
+            <p className="text-xs text-muted-foreground mt-2">Active consultations / total consultations</p>
           </CardContent>
         </Card>
       </div>

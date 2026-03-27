@@ -15,6 +15,22 @@ import SentimentDistributionCard from '@/components/SentimentDistributionCard';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const normalizeStakeholderType = (value: string | null | undefined): string => {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return 'Individual';
+  if (raw === 'individual' || raw === 'indv') return 'Individual';
+  if (raw === 'industry' || raw === 'industry body' || raw.includes('industry body')) return 'Industry Body';
+  if (raw === 'ngo' || raw === 'n.g.o') return 'NGO';
+  if (raw === 'law' || raw === 'law firm' || raw === 'legal') return 'Law Firm';
+  if (raw === 'consulting' || raw === 'consulting firm' || raw === 'consultant') return 'Consulting Firm';
+  if (raw === 'nri') return 'NRI';
+  return raw
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
 const ConsultationDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -612,7 +628,7 @@ const ConsultationDetail = () => {
             return {
             id: r.comments_id || r.id || r.comment_id || r.commentsid || Math.random(),
             submitter: r.commenter_name || r.submitter || 'Anonymous',
-            stakeholderType: r.stakeholder_type || r.stakeholderType || 'Individual',
+            stakeholderType: normalizeStakeholderType(r.stakeholder_type || r.stakeholderType || 'Individual'),
             date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : (r.date || ''),
             stance: normalizedStance,
             summary: r.summary || r.comment_data || (r.comment_data ? String(r.comment_data).slice(0, 200) : ''),
@@ -672,7 +688,7 @@ const ConsultationDetail = () => {
   // Prepare Stakeholder Data for Donut Chart
   const stakeholderData = useMemo(() => {
     const counts = comments.reduce((acc, comment) => {
-      const type = comment.stakeholderType || 'Unknown';
+      const type = normalizeStakeholderType(comment.stakeholderType || 'Unknown');
       acc[type] = (acc[type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
