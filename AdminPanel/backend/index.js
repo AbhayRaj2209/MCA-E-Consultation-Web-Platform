@@ -122,18 +122,6 @@ app.post('/api/comments/:bill', async (req, res) => {
     const documentId = billMap[bill];
 
     // Default values
-<<<<<<< HEAD
-    let sentiment = 'Neutral';
-    let confidenceScore = 4.2; // Hardcoded default based on requirements
-    let summary = null;
-
-    // Call FastAPI for Sentiment
-    try {
-      const sentimentResponse = await fetch('http://192.168.1.53:8364/predict_sentiment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment: comment_data })
-=======
     let sentiment = 'neutral';
     let confidence = 0.0;
     let strongOpinion = false;
@@ -147,63 +135,10 @@ app.post('/api/comments/:bill', async (req, res) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: comment_data })
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
       });
 
       if (sentimentResponse.ok) {
         const data = await sentimentResponse.json();
-<<<<<<< HEAD
-        // Response format: { predicted_sentiment: "POSITIVE", ... }
-        if (data.predicted_sentiment) {
-          // Convert POSITIVE -> Positive (Title Case)
-          const s = data.predicted_sentiment;
-          const candidate = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-
-          // Output Validation: Ensure valid sentiment
-          if (['Positive', 'Negative', 'Neutral'].includes(candidate)) {
-            sentiment = candidate;
-          } else {
-            console.warn(`[SECURITY] Invalid sentiment received from model: ${candidate}. Defaulting to Neutral.`);
-            sentiment = 'Neutral';
-          }
-        }
-      } else {
-        const errorText = await sentimentResponse.text();
-        console.warn('Sentiment API returned non-OK status:', sentimentResponse.status, errorText);
-      }
-    } catch (e) {
-      console.error('Failed to fetch sentiment:', e.message);
-    }
-
-    // Call FastAPI for Summary
-    try {
-      const summaryResponse = await fetch('http://192.168.1.53:8364/api/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comments: [comment_data] }) // Sending as list assuming plural
-      });
-
-      if (summaryResponse.ok) {
-        const data = await summaryResponse.json();
-        // Response format: { summaries: ["..."] }
-        if (data.summaries && data.summaries.length > 0) {
-          summary = data.summaries[0];
-        }
-      } else {
-        const errorText = await summaryResponse.text();
-        console.warn('Summary API returned non-OK status:', summaryResponse.status, errorText);
-      }
-    } catch (e) {
-      console.error('Failed to fetch summary:', e.message);
-    }
-
-    const result = await pool.query(
-      `INSERT INTO ${bill}_comments 
-       (commenter_name, comment_data, sentiment, stakeholder_type, document_id, confidence_score, summary) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [commenter_name, comment_data, sentiment, stakeholder_type || 'Individual', documentId, confidenceScore, summary]
-=======
-        // Map response fields
         sentiment = data.sentiment || 'neutral';
         confidence = data.confidence || 0.0;
         strongOpinion = data.strong_opinion || false;
@@ -236,7 +171,6 @@ app.post('/api/comments/:bill', async (req, res) => {
        (commenter_name, comment_data, sentiment, stakeholder_type, document_id, confidence, strong_opinion, keywords, summary)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [commenter_name, comment_data, sentiment, stakeholder_type || 'Individual', documentId, confidence, strongOpinion, JSON.stringify(keywords), summary]
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
     );
 
     res.status(201).json({ ok: true, data: result.rows[0] });
@@ -283,50 +217,6 @@ app.post('/api/submit-comment', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid Document ID' });
     }
 
-<<<<<<< HEAD
-    // AI Enrichment
-    let sentiment = userSentiment || 'Neutral';
-    let summary = userSummary || null;
-    let confidenceScore = 4.2;
-
-    try {
-      // Sentiment
-      const sentimentResponse = await fetch('http://192.168.1.53:8364/predict_sentiment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment: commentData })
-      });
-      if (sentimentResponse.ok) {
-        const data = await sentimentResponse.json();
-        if (data.predicted_sentiment) {
-          const s = data.predicted_sentiment;
-          const candidate = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-          // Output Validation
-          if (['Positive', 'Negative', 'Neutral'].includes(candidate)) {
-            sentiment = candidate;
-          } else {
-            console.warn(`[SECURITY] Invalid sentiment received from model: ${candidate}. Defaulting to Neutral.`);
-            sentiment = 'Neutral';
-          }
-        }
-      }
-
-      // Summary
-      const summaryResponse = await fetch('http://192.168.1.53:8364/api/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comments: [commentData] })
-      });
-      if (summaryResponse.ok) {
-        const data = await summaryResponse.json();
-        if (data.summaries && data.summaries.length > 0) {
-          summary = data.summaries[0];
-        }
-      }
-    } catch (e) {
-      console.error('AI Enrichment Failed:', e.message);
-      // Proceed without AI if it fails, fallback to defaults
-=======
     // AI Enrichment - Default values
     let sentiment = userSentiment || 'neutral';
     let summary = userSummary || null;
@@ -368,34 +258,21 @@ app.post('/api/submit-comment', async (req, res) => {
       // Fallback to defaults
       sentiment = 'neutral';
       confidence = 0.0;
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
     }
 
     // Insert into DB
     const query = `
       INSERT INTO ${tableName} (
-<<<<<<< HEAD
-        document_id, section, comment_data, sentiment, summary, confidence_score,
-        supported_doc, supported_doc_filename,
-        commenter_name, commenter_email, commenter_phone, commenter_address,
-        id_type, id_number, stakeholder_type
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-=======
         document_id, section, comment_data, sentiment, summary, confidence, strong_opinion, keywords,
         supported_doc, supported_doc_filename,
         commenter_name, commenter_email, commenter_phone, commenter_address,
         id_type, id_number, stakeholder_type
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
       RETURNING *
     `;
 
     const values = [
-<<<<<<< HEAD
-      documentId, section || null, commentData, sentiment, summary, confidenceScore,
-=======
       documentId, section || null, commentData, sentiment, summary, confidence, strongOpinion, JSON.stringify(keywords),
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
       supportedDocData || null, supportedDocFilename || null,
       commenterName, commenterEmail, commenterPhone, commenterAddress || null,
       idType, idNumber, stakeholderType
@@ -403,9 +280,6 @@ app.post('/api/submit-comment', async (req, res) => {
 
     const result = await pool.query(query, values);
 
-<<<<<<< HEAD
-    res.status(201).json({ success: true, message: 'Comment submitted successfully', data: result.rows[0] });
-=======
     res.status(201).json({
       success: true,
       message: 'Comment submitted successfully',
@@ -417,7 +291,6 @@ app.post('/api/submit-comment', async (req, res) => {
         keywords: keywords
       }
     });
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
 
   } catch (err) {
     console.error('Error submitting comment:', err);
@@ -750,8 +623,6 @@ app.get('/api/section-sentiments/:bill', async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-=======
 // Admin API: Get all comments with sentiment analysis details and counts
 app.get('/api/admin/comments', async (req, res) => {
   try {
@@ -900,69 +771,203 @@ app.get('/api/admin/comments', async (req, res) => {
   }
 });
 
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
-// Get consultations metadata (titles, description, dates, status) + submissions count
-app.get('/api/consultations', async (req, res) => {
-  try {
-    const bills = [
-      {
-        id: 1,
-        bill_key: 'bill_1',
-        title: 'Establishment of Indian Multi-Disciplinary Partnership (MDP) firms by the Govt. of India',
-        status: 'In Progress',
-        endDate: '2025-10-10',
-        description: 'New guidelines for CSR implementation and reporting',
-        publishDate: '2025-09-01'
-      },
-      {
-        id: 2,
-        bill_key: 'bill_2',
-        title: 'Digital Competition Bill, 2025',
-        status: 'Completed',
-        endDate: '2025-08-31',
-        description: 'Proposed amendments to strengthen corporate governance and transparency',
-        publishDate: '2025-07-15'
-      },
-      {
-        id: 3,
-        bill_key: 'bill_3',
-        title: 'Companies Amendment Bill, 2025',
-        status: 'Completed',
-        endDate: '2025-07-15',
-        description: 'Amendments to improve the insolvency resolution process',
-        publishDate: '2025-06-01'
-      }
-    ];
+// Helper to provide fallback static consultations (legacy behavior)
+async function getDefaultConsultations() {
+  const bills = [
+    {
+      id: 1,
+      bill_key: 'bill_1',
+      title: 'Establishment of Indian Multi-Disciplinary Partnership (MDP) firms by the Govt. of India',
+      status: 'In Progress',
+      endDate: '2025-10-10',
+      description: 'New guidelines for CSR implementation and reporting',
+      publishDate: '2025-09-01'
+    },
+    {
+      id: 2,
+      bill_key: 'bill_2',
+      title: 'Digital Competition Bill, 2025',
+      status: 'Completed',
+      endDate: '2025-08-31',
+      description: 'Proposed amendments to strengthen corporate governance and transparency',
+      publishDate: '2025-07-15'
+    },
+    {
+      id: 3,
+      bill_key: 'bill_3',
+      title: 'Companies Amendment Bill, 2025',
+      status: 'Completed',
+      endDate: '2025-07-15',
+      description: 'Amendments to improve the insolvency resolution process',
+      publishDate: '2025-06-01'
+    }
+  ];
 
-    // For each bill, query count of comments
-    const results = [];
-    for (const b of bills) {
-      const countQuery = `SELECT COUNT(*)::int AS count FROM ${b.bill_key}_comments`;
-      let count = 0;
-      try {
-        const r = await pool.query(countQuery);
-        count = r.rows[0]?.count || 0;
-      } catch (e) {
-        // If table doesn't exist or error, treat as zero and continue
-        console.warn(`Could not get count for ${b.bill_key}:`, e.message || e);
-        count = 0;
-      }
-
-      results.push({
-        id: b.id,
-        bill: b.bill_key,
-        title: b.title,
-        status: b.status,
-        submissions: count,
-        endDate: b.endDate,
-        description: b.description,
-        publishDate: b.publishDate
-      });
+  const results = [];
+  for (const b of bills) {
+    const countQuery = `SELECT COUNT(*)::int AS count FROM ${b.bill_key}_comments`;
+    let count = 0;
+    try {
+      const r = await pool.query(countQuery);
+      count = r.rows[0]?.count || 0;
+    } catch (e) {
+      console.warn(`Could not get count for ${b.bill_key}:`, e.message || e);
+      count = 0;
     }
 
+    results.push({
+      id: b.id,
+      bill_key: b.bill_key,
+      title: b.title,
+      status: b.status,
+      submissions: count,
+      endDate: b.endDate,
+      description: b.description,
+      publishDate: b.publishDate
+    });
+  }
+
+  return results;
+}
+
+// Get consultations metadata (titles, description, dates, status) + submissions count (documents-backed preferred)
+app.get('/api/consultations', async (req, res) => {
+  try {
+    const docResult = await pool.query(
+      `SELECT document_id, type_of_document, type_of_act, posted_on, comments_due_date, document_name, summary, positive_summary, negative_summary, created_at
+       FROM documents
+       ORDER BY created_at DESC`
+    );
+
+    if (docResult.rows.length > 0) {
+      const consultations = await Promise.all(docResult.rows.map(async (doc) => {
+        let submissions = 0;
+        const billKey = `bill_${doc.document_id}`;
+
+        if (doc.document_id && doc.document_id <= 3) {
+          try {
+            const countRes = await pool.query(`SELECT COUNT(*)::int AS count FROM ${billKey}_comments`);
+            submissions = countRes.rows[0]?.count || 0;
+          } catch (e) {
+            submissions = 0;
+          }
+        }
+
+        const status = doc.comments_due_date
+          ? (new Date(doc.comments_due_date) >= new Date() ? 'In Progress' : 'Completed')
+          : 'Draft';
+
+        return {
+          id: doc.document_id,
+          bill_key: billKey,
+          title: doc.document_name,
+          status,
+          endDate: doc.comments_due_date ? doc.comments_due_date.toISOString().split('T')[0] : null,
+          description: doc.type_of_act || doc.summary || null,
+          publishDate: doc.posted_on ? doc.posted_on.toISOString().split('T')[0] : null,
+          submissions,
+          summary: doc.summary || null,
+          created_at: doc.created_at
+        };
+      }));
+
+      return res.json({ ok: true, data: consultations });
+    }
+
+    const results = await getDefaultConsultations();
     res.json({ ok: true, data: results });
+
   } catch (err) {
     console.error('Error fetching consultations:', err);
+    try {
+      const results = await getDefaultConsultations();
+      res.json({ ok: true, data: results });
+    } catch (_) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  }
+});
+
+// Get all documents (for admin management)
+app.get('/api/documents', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT document_id, type_of_document, type_of_act, posted_on, comments_due_date, document_name, document_data, summary, supported_document, overall_wc, positive_wc, negative_wc, neutral_wc, wordcount_json, created_at, updated_at
+      FROM documents
+      ORDER BY created_at DESC
+    `);
+
+    res.json({ ok: true, data: result.rows });
+  } catch (err) {
+    console.error('Error fetching documents:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Add a new document/consultation
+app.post('/api/documents', async (req, res) => {
+  try {
+    const {
+      type_of_document,
+      type_of_act,
+      posted_on,
+      comments_due_date,
+      document_name,
+      document_data,
+      summary,
+      supported_document,
+      overall_wc,
+      positive_wc,
+      negative_wc,
+      neutral_wc,
+      wordcount_json
+    } = req.body;
+
+    if (!document_name || !document_data) {
+      return res.status(400).json({ ok: false, error: 'document_name and document_data are required' });
+    }
+
+    const insertQuery = `
+      INSERT INTO documents (
+        type_of_document,
+        type_of_act,
+        posted_on,
+        comments_due_date,
+        document_name,
+        document_data,
+        summary,
+        supported_document,
+        overall_wc,
+        positive_wc,
+        negative_wc,
+        neutral_wc,
+        wordcount_json,
+        created_at,
+        updated_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
+      RETURNING *
+    `;
+
+    const values = [
+      type_of_document || null,
+      type_of_act || null,
+      posted_on || null,
+      comments_due_date || null,
+      document_name,
+      document_data,
+      summary || null,
+      supported_document || null,
+      overall_wc || null,
+      positive_wc || null,
+      negative_wc || null,
+      neutral_wc || null,
+      wordcount_json || null
+    ];
+
+    const result = await pool.query(insertQuery, values);
+    res.status(201).json({ ok: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('Error creating document:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -974,10 +979,7 @@ app.listen(PORT, () => {
 
   console.log('  GET  /api/comments/:bill');
   console.log('  POST /api/comments/:bill');
-<<<<<<< HEAD
-=======
   console.log('  GET  /api/admin/comments');
->>>>>>> 1450b5da7249fafe8c4969259a9e799d9158605f
   console.log('  GET  /api/sentiment/:bill');
   console.log('  GET  /api/summaries/:bill');
   console.log('  GET  /api/sections/:bill');

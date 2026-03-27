@@ -7,8 +7,13 @@ import emoji
 import re
 from fastapi.middleware.cors import CORSMiddleware
 
+from typing import List
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 # ----------- INIT APP -----------
-app = FastAPI(title="Policy Sentiment + Summarization API")
+app = FastAPI(title="Policy Sentiment + Summarization + Evaluation API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -133,6 +138,20 @@ def preprocess_text(text):
 def detect_strong_opinion(text):
     return [w for w in text.split() if w in STRONG_OPINION_WORDS]
 
+# ----------- HELPER PREDICT -----------
+def predict_label(text):
+    processed = preprocess_text(text)
+
+    inputs = tokenizer(processed, return_tensors="pt", truncation=True, padding=True)
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+        probs = F.softmax(outputs.logits, dim=1)
+        pred = torch.argmax(probs, dim=1).item()
+
+    return label_map[model.config.id2label[pred]]
+
 # ----------- REQUEST MODELS -----------
 class TextRequest(BaseModel):
     text: str
@@ -140,75 +159,38 @@ class TextRequest(BaseModel):
 class SummaryRequest(BaseModel):
     comments: list[str]
 
+class BatchRequest(BaseModel):
+    data: List[dict]
+
 # ----------- ROOT -----------
 @app.get("/")
 def home():
     return {"message": "API running 🚀"}
 
-# ----------- SENTIMENT API -----------
+# ----------- SENTIMENT -----------
 @app.post("/predict")
 def predict(request: TextRequest):
     try:
-        original_text = request.text
-        processed_text = preprocess_text(original_text)
-
-        inputs = tokenizer(
-            processed_text,
-            return_tensors="pt",
-            truncation=True,
-            padding=True,
-            max_length=512
-        )
-
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-
-        with torch.no_grad():
-            outputs = model(**inputs)
-            probs = F.softmax(outputs.logits, dim=1)
-            pred = torch.argmax(probs, dim=1).item()
-
-        sentiment = label_map[model.config.id2label[pred]]
-        strong_words = detect_strong_opinion(processed_text)
+        sentiment = predict_label(request.text)
 
         return {
-            "original_text": original_text,
-            "processed_text": processed_text,
-            "sentiment": sentiment,
-            "confidence": float(probs[0][pred]),
-            "strong_opinion": len(strong_words) > 0,
-            "keywords": strong_words
+            "text": request.text,
+            "sentiment": sentiment
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ----------- SUMMARIZATION API -----------
+# ----------- SUMMARIZATION -----------
 @app.post("/summarize-by-sentiment")
 def summarize_by_sentiment(request: SummaryRequest):
     try:
         comments = request.comments
 
-        if not comments:
-            return {
-                "overall": "No comments available",
-                "positive": "No data",
-                "negative": "No data"
-            }
-
         positives, negatives, neutrals = [], [], []
 
         for text in comments:
-            processed = preprocess_text(text)
-
-            inputs = tokenizer(processed, return_tensors="pt", truncation=True)
-            inputs = {k: v.to(device) for k, v in inputs.items()}
-
-            with torch.no_grad():
-                outputs = model(**inputs)
-                probs = F.softmax(outputs.logits, dim=1)
-                pred = torch.argmax(probs, dim=1).item()
-
-            label = label_map[model.config.id2label[pred]]
+            label = predict_label(text)
 
             if label == "positive":
                 positives.append(text)
@@ -221,21 +203,54 @@ def summarize_by_sentiment(request: SummaryRequest):
             if not texts:
                 return "No data"
             text = " ".join(texts)[:2000]
-
-            result = summarizer(
-                text,
-                max_length=100,
-                min_length=25,
-                do_sample=False
-            )
-            return result[0]["summary_text"]
+            return summarizer(text, max_length=100, min_length=25, do_sample=False)[0]["summary_text"]
 
         return {
             "overall": generate_summary(comments),
             "positive": generate_summary(positives),
             "negative": generate_summary(negatives),
-            "neutral": generate_summary(neutral)
+            "neutral": generate_summary(neutrals)  # ✅ FIXED
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ----------- EVALUATION -----------
+@app.post("/evaluate")
+def evaluate(req: BatchRequest):
+    y_true = []
+    y_pred = []
+
+    for item in req.data:
+        y_true.append(item["label"])
+        y_pred.append(predict_label(item["text"]))
+
+    cm = confusion_matrix(y_true, y_pred, labels=["negative", "neutral", "positive"])
+
+    return {
+        "confusion_matrix": cm.tolist(),
+        "labels": ["negative", "neutral", "positive"]
+    }
+
+# ----------- HEATMAP -----------
+@app.post("/heatmap")
+def heatmap(req: BatchRequest):
+    y_true = []
+    y_pred = []
+
+    for item in req.data:
+        y_true.append(item["label"])
+        y_pred.append(predict_label(item["text"]))
+
+    cm = confusion_matrix(y_true, y_pred, labels=["negative", "neutral", "positive"])
+
+    plt.figure()
+    sns.heatmap(cm, annot=True, fmt="d",
+                xticklabels=["negative", "neutral", "positive"],
+                yticklabels=["negative", "neutral", "positive"])
+
+    path = "confusion_matrix.png"
+    plt.savefig(path)
+    plt.close()
+
+    return {"message": "Heatmap saved", "file": path}

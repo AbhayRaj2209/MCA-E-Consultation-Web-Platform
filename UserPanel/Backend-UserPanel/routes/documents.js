@@ -116,4 +116,3 @@ router.get('/documents/:id/summary', async (req, res) => {
 });
 
 module.exports = router;
-

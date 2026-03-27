@@ -8,6 +8,7 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import ConsultationDetail from "./pages/ConsultationDetail";
 import TrendAnalysis from "./pages/TrendAnalysis";
+import Consultations from "./pages/Consultations";
 import StakeholderAnalytics from "./pages/StakeholderAnalytics";
 import ExportReports from "./pages/ExportReports";
 import Settings from "./pages/Settings";
@@ -63,6 +64,13 @@ const AppRoutes = () => (
       <ProtectedRoute>
         <Layout>
           <TrendAnalysis />
+        </Layout>
+      </ProtectedRoute>
+    } />
+    <Route path="/consultations" element={
+      <ProtectedRoute>
+        <Layout>
+          <Consultations />
         </Layout>
       </ProtectedRoute>
     } />
