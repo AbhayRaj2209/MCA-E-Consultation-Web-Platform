@@ -138,19 +138,45 @@ const DocumentDetails = () => {
   // attempt translation via public LibreTranslate endpoints (best-effort)
   // NOTE: translation is handled by the backend mock or a paid provider configured on the server.
 
+  const resolveAudioUrl = (audioUrl) => {
+    if (!audioUrl || typeof audioUrl !== 'string') return null;
+    if (audioUrl.startsWith('http://') || audioUrl.startsWith('https://')) return audioUrl;
+    if (audioUrl.startsWith('/api')) {
+      const base = (API_BASE_URL || '').replace(/\/$/, '');
+      return base ? `${base}${audioUrl}` : audioUrl;
+    }
+    return audioUrl;
+  };
+
+  const playSpeechFallback = (text) => {
+    if (!text || !('speechSynthesis' in window)) return false;
+    const utter = new SpeechSynthesisUtterance(text);
+    const langCode = selectedLang === 'hi' ? 'hi-IN' : selectedLang === 'es' ? 'es-ES' : selectedLang === 'ta' ? 'ta-IN' : 'en-US';
+    utter.lang = langCode;
+    utter.onend = () => setAudioPlaying(false);
+    utter.onerror = () => setAudioPlaying(false);
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
+    setAudioPlaying(true);
+    return true;
+  };
+
   const playAudio = (audioUrl, text) => {
     stopAudio();
-    if (audioUrl && (audioUrl.startsWith("http") || audioUrl.startsWith("/api"))) {
+    const resolvedAudioUrl = resolveAudioUrl(audioUrl);
+
+    if (resolvedAudioUrl && (resolvedAudioUrl.startsWith("http") || resolvedAudioUrl.startsWith("/api"))) {
       try {
-          audioRef.current = new Audio(audioUrl);
+          audioRef.current = new Audio(resolvedAudioUrl);
           // allow cross-origin audio where possible
           try { audioRef.current.crossOrigin = 'anonymous'; } catch(e) {}
           audioRef.current.onended = () => setAudioPlaying(false);
           audioRef.current.onerror = (ev) => {
-            console.error('Audio element error', ev, audioUrl);
-            toast({ title: 'Audio playback failed', description: 'Could not play audio from server. Falling back to speech synthesis.' });
-            setAudioPlaying(false);
-            // fallback to TTS below
+            console.error('Audio element error', ev, resolvedAudioUrl);
+            if (!playSpeechFallback(text)) {
+              toast({ title: 'Audio playback failed', description: 'Could not play audio from server and speech synthesis is unavailable.' });
+              setAudioPlaying(false);
+            }
           };
           const playPromise = audioRef.current.play();
 
@@ -161,7 +187,9 @@ if (playPromise && typeof playPromise.then === 'function') {
     })
     .catch((err) => {
       console.warn('Audio blocked until user interaction', err);
-      setAudioPlaying(false);
+      if (!playSpeechFallback(text)) {
+        setAudioPlaying(false);
+      }
     });
 } else {
   setAudioPlaying(true);
@@ -173,14 +201,7 @@ if (playPromise && typeof playPromise.then === 'function') {
     }
 
     // Fallback to Web Speech API
-    if (text && 'speechSynthesis' in window) {
-      const utter = new SpeechSynthesisUtterance(text);
-      const langCode = selectedLang === 'hi' ? 'hi-IN' : selectedLang === 'es' ? 'es-ES' : selectedLang === 'ta' ? 'ta-IN' : 'en-US';
-      utter.lang = langCode;
-      utter.onend = () => setAudioPlaying(false);
-      speechSynthesis.cancel();
-      speechSynthesis.speak(utter);
-      setAudioPlaying(true);
+    if (playSpeechFallback(text)) {
       return;
     }
 

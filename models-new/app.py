@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # ----------- INIT APP -----------
-app = FastAPI(title="Policy Sentiment + Summarization + Evaluation API")
+app = FastAPI(title="Policy Sentiment + Summarization API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -94,15 +94,6 @@ PHRASES = {
     "hona chahiye": "should happen"
 }
 
-# ----------- STRONG WORDS -----------
-STRONG_OPINION_WORDS = {
-    "corrupt", "useless", "harmful", "dangerous",
-    "unfair", "illegal", "biased", "wrong",
-    "bad", "worst", "poor", "inefficient",
-    "fail", "failure", "problem", "issue",
-    "concern", "risk", "controversial"
-}
-
 # ----------- PREPROCESS -----------
 def preprocess_text(text):
     text = text.lower()
@@ -134,11 +125,7 @@ def preprocess_text(text):
 
     return text
 
-# ----------- STRONG OPINION -----------
-def detect_strong_opinion(text):
-    return [w for w in text.split() if w in STRONG_OPINION_WORDS]
-
-# ----------- HELPER PREDICT -----------
+# ----------- PREDICT -----------
 def predict_label(text):
     processed = preprocess_text(text)
 
@@ -170,66 +157,46 @@ def home():
 # ----------- SENTIMENT -----------
 @app.post("/predict")
 def predict(request: TextRequest):
-    try:
-        sentiment = predict_label(request.text)
+    sentiment = predict_label(request.text)
+    return {"text": request.text, "sentiment": sentiment}
 
-        return {
-            "text": request.text,
-            "sentiment": sentiment
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ----------- SUMMARIZATION -----------
+# ----------- SUMMARIZATION (IMPROVED) -----------
 @app.post("/summarize-by-sentiment")
 def summarize_by_sentiment(request: SummaryRequest):
-    try:
-        comments = request.comments
+    comments = request.comments
 
-        positives, negatives, neutrals = [], [], []
+    positives, negatives, neutrals = [], [], []
 
-        for text in comments:
-            label = predict_label(text)
+    # 🔥 Split comments by sentiment
+    for text in comments:
+        label = predict_label(text)
 
-            if label == "positive":
-                positives.append(text)
-            elif label == "negative":
-                negatives.append(text)
-            else:
-                neutrals.append(text)
+        if label == "positive":
+            positives.append(text)
+        elif label == "negative":
+            negatives.append(text)
+        else:
+            neutrals.append(text)
 
-        def generate_summary(texts):
-            if not texts:
-                return "No data"
-            text = " ".join(texts)[:2000]
-            return summarizer(text, max_length=100, min_length=25, do_sample=False)[0]["summary_text"]
+    def generate_summary(texts):
+        if len(texts) < 2:
+            return "Not enough data"
 
-        return {
-            "overall": generate_summary(comments),
-            "positive": generate_summary(positives),
-            "negative": generate_summary(negatives),
-            "neutral": generate_summary(neutrals)
-        }
+        cleaned = [preprocess_text(t) for t in texts]
+        text = " ".join(cleaned)[:3000]
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ----------- EVALUATION -----------
-@app.post("/evaluate")
-def evaluate(req: BatchRequest):
-    y_true = []
-    y_pred = []
-
-    for item in req.data:
-        y_true.append(item["label"])
-        y_pred.append(predict_label(item["text"]))
-
-    cm = confusion_matrix(y_true, y_pred, labels=["negative", "neutral", "positive"])
+        return summarizer(
+            text,
+            max_length=120,
+            min_length=40,
+            do_sample=False
+        )[0]["summary_text"]
 
     return {
-        "confusion_matrix": cm.tolist(),
-        "labels": ["negative", "neutral", "positive"]
+        "overall": generate_summary(comments),
+        "positive": generate_summary(positives),
+        "negative": generate_summary(negatives),
+        "neutral": generate_summary(neutrals)
     }
 
 # ----------- HEATMAP -----------
@@ -245,9 +212,13 @@ def heatmap(req: BatchRequest):
     cm = confusion_matrix(y_true, y_pred, labels=["negative", "neutral", "positive"])
 
     plt.figure()
-    sns.heatmap(cm, annot=True, fmt="d",
-                xticklabels=["negative", "neutral", "positive"],
-                yticklabels=["negative", "neutral", "positive"])
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        xticklabels=["negative", "neutral", "positive"],
+        yticklabels=["negative", "neutral", "positive"]
+    )
 
     path = "confusion_matrix.png"
     plt.savefig(path)

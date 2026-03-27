@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Footer } from "@/components/layout/Footer";
+import { VidhiChatbot } from "@/components/VidhiChatbot";
 import Index from "./pages/Index";
 import EConsultationLanding from "./pages/EConsultationLanding";
 import ConsultationListing from "./pages/ConsultationListing";
@@ -37,6 +38,8 @@ const App = () => (
           </Routes>
           <Footer />
         </div>
+        {/* Floating Chatbot - Appears on all pages */}
+        <VidhiChatbot />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
