@@ -209,7 +209,7 @@ def summarize_by_sentiment(request: SummaryRequest):
             "overall": generate_summary(comments),
             "positive": generate_summary(positives),
             "negative": generate_summary(negatives),
-            "neutral": generate_summary(neutrals)  # ✅ FIXED
+            "neutral": generate_summary(neutrals)
         }
 
     except Exception as e:
