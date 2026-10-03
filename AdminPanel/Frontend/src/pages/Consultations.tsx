@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { apiFetch } from '@/lib/api';
 
 interface Consultation {
   id: number;
@@ -37,7 +38,7 @@ const Consultations = () => {
     setError(null);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/consultations`);
+      const res = await apiFetch(`/api/consultations`);
       const json = await res.json();
       if (json.ok) {
         setConsultations(json.data || []);
@@ -89,7 +90,7 @@ const Consultations = () => {
         });
       }
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/documents`, {
+      const res = await apiFetch(`/api/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

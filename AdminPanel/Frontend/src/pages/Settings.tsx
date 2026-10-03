@@ -6,9 +6,44 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const Settings = () => {
   const [activeSection, setActiveSection] = useState('profile');
+  const { user, changePassword } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const strong = passwords.next.length >= 8 && /[A-Za-z]/.test(passwords.next) && /\d/.test(passwords.next);
+    if (!strong) {
+      toast({ title: 'Weak password', description: 'Use at least 8 characters, with a letter and a number.', variant: 'destructive' });
+      return;
+    }
+    if (passwords.next !== passwords.confirm) {
+      toast({ title: 'Passwords do not match', description: 'Please re-enter the new password.', variant: 'destructive' });
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await changePassword(passwords.current, passwords.next);
+      setPasswords({ current: '', next: '', confirm: '' });
+      toast({ title: 'Password changed', description: 'Use your new password next time you sign in.' });
+    } catch (err) {
+      toast({
+        title: 'Could not change password',
+        description: err instanceof Error ? err.message : 'Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   const settingsSections = [
     { id: 'profile', label: 'Profile Settings', icon: User },
@@ -71,25 +106,25 @@ const Settings = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" defaultValue="Ishaan" />
+                    <Label>Full Name</Label>
+                    <Input value={user?.full_name ?? ''} readOnly />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" defaultValue="Saxena" />
+                    <Label>Email Address</Label>
+                    <Input value={user?.email ?? ''} readOnly />
+                  </div>
+                  <div>
+                    <Label>Designation</Label>
+                    <Input value={user?.designation ?? ''} placeholder="Not set" readOnly />
+                  </div>
+                  <div>
+                    <Label>Department</Label>
+                    <Input value={user?.department ?? ''} placeholder="Not set" readOnly />
                   </div>
                 </div>
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" defaultValue="ishaan.saxena@mca.gov.in" />
-                </div>
-                <div>
-                  <Label htmlFor="designation">Designation</Label>
-                  <Input id="designation" defaultValue="Policy Analyst" />
-                </div>
-                <Button>Update Profile</Button>
+                <Button onClick={() => navigate('/profile')}>Edit on My Profile</Button>
               </CardContent>
             </Card>
           )}
@@ -165,42 +200,31 @@ const Settings = () => {
                   Security & Access
                 </CardTitle>
                 <CardDescription>
-                  Manage your account security and access permissions
+                  Change the password you use to sign in
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Two-Factor Authentication</Label>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium">SMS Authentication</p>
-                      <p className="text-xs text-muted-foreground">+91 ****-***-789</p>
-                    </div>
-                    <Button variant="outline" size="sm">Configure</Button>
+              <CardContent>
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <div>
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Input id="currentPassword" type="password" autoComplete="current-password" required
+                      value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} />
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Session Management</Label>
-                  <div className="p-3 border rounded-lg">
-                    <p className="text-sm font-medium">Active Sessions: 2</p>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Current session expires in 4 hours
-                    </p>
-                    <Button variant="outline" size="sm">View All Sessions</Button>
+                  <div>
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <Input id="newPassword" type="password" autoComplete="new-password" required
+                      placeholder="At least 8 characters, with a letter and a number"
+                      value={passwords.next} onChange={(e) => setPasswords({ ...passwords, next: e.target.value })} />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>API Access</Label>
-                  <div className="p-3 border rounded-lg">
-                    <p className="text-sm font-medium">API Key Status</p>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Last used: 2 hours ago
-                    </p>
-                    <Button variant="outline" size="sm">Generate New Key</Button>
+                  <div>
+                    <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
+                    <Input id="confirmNewPassword" type="password" autoComplete="new-password" required
+                      value={passwords.confirm} onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })} />
                   </div>
-                </div>
+                  <Button type="submit" disabled={isChangingPassword}>
+                    {isChangingPassword ? 'Updating...' : 'Change Password'}
+                  </Button>
+                </form>
               </CardContent>
             </Card>
           )}

@@ -54,8 +54,8 @@ cd AdminPanel/backend && npm install && npm run dev
 cd AdminPanel/Frontend && npm install && npm run dev
 ```
 
-Each backend needs a `.env` with `DATABASE_URL` (PostgreSQL) and `FASTAPI_URL=http://127.0.0.1:8001`;
-each frontend needs `VITE_API_URL` pointing at its backend.
+Each backend needs a `.env` with `DATABASE_URL` (PostgreSQL) and `FASTAPI_URL=http://127.0.0.1:8001`
+(the admin backend also needs `JWT_SECRET`); each frontend needs `VITE_API_URL` pointing at its backend.
 
 ## Key features
 
@@ -63,6 +63,7 @@ each frontend needs `VITE_API_URL` pointing at its backend.
 - Transformer-based sentiment analysis and summarisation of every comment
 - Admin analytics: sentiment distribution, stakeholder breakdown, trends, word clouds
 - Secure submission: input validation, rate limiting, masked ID storage, optional OTP verification
+- Admin sign up / sign in with email and password (bcrypt-hashed, JWT sessions); every admin data API requires login
 
 ## License
 

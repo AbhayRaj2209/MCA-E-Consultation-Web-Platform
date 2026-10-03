@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, TrendingUp, Users, FileText } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -22,7 +23,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) => {
   useEffect(() => {
     const fetchConsultations = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/consultations`);
+        const res = await apiFetch(`/api/consultations`);
         const json = await res.json();
         if (json.ok) {
           setConsultations(json.data || []);

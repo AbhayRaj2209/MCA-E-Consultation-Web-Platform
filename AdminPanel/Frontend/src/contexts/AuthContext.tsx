@@ -1,25 +1,53 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
+import { apiJson, getToken, setToken, AUTH_EXPIRED_EVENT } from '@/lib/api';
 
-interface User {
+export interface User {
   id: number;
-  name: string;
+  full_name: string;
   email: string;
-  role: string;
-  avatar?: string;
+  phone: string | null;
+  designation: string | null;
+  department: string | null;
+  location: string | null;
+  bio: string | null;
+  created_at: string;
+  updated_at: string;
+  last_login_at: string | null;
 }
 
-interface UserSession {
-  location: string;
-  lastLogin: Date;
+export interface SignupData {
+  fullName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  designation?: string;
+  department?: string;
+  location?: string;
+}
+
+export interface ProfileUpdate {
+  fullName: string;
+  phone?: string;
+  designation?: string;
+  department?: string;
+  location?: string;
+  bio?: string;
+}
+
+interface AuthResponse {
+  token: string;
+  user: User;
 }
 
 interface AuthContextType {
   user: User | null;
-  userSession: UserSession | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string, otp: string) => Promise<boolean>;
-  logout: () => void;
   isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (data: SignupData) => Promise<void>;
+  logout: () => void;
+  updateProfile: (data: ProfileUpdate) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,75 +60,74 @@ export const useAuth = () => {
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userSession, setUserSession] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing session on app load
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const storedSession = localStorage.getItem('userSession');
-    
-    if (storedUser && storedSession) {
-      setUser(JSON.parse(storedUser));
-      setUserSession({
-        ...JSON.parse(storedSession),
-        lastLogin: new Date(JSON.parse(storedSession).lastLogin)
-      });
-    }
-    
-    setIsLoading(false);
+  const logout = useCallback(() => {
+    setToken(null);
+    setUser(null);
   }, []);
 
-  const login = async (email: string, password: string, otp: string): Promise<boolean> => {
-    // Mock authentication - in real app, this would call an API
-    if (email === 'ishaan.saxena@mca.gov.in' && password === 'password' && otp === '123456') {
-      const mockUser: User = {
-        id: 1,
-        name: 'Ishaan Saxena',
-        email: 'ishaan.saxena@mca.gov.in',
-        role: 'Policy Analyst',
-        avatar: 'https://placehold.co/40x40/E2E8F0/475569?text=I'
-      };
-
-      const mockSession: UserSession = {
-        location: 'Delhi, India',
-        lastLogin: new Date()
-      };
-
-      setUser(mockUser);
-      setUserSession(mockSession);
-      
-      // Store in localStorage for persistence
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      localStorage.setItem('userSession', JSON.stringify(mockSession));
-      
-      return true;
+  // Restore session: a stored token is only trusted after the backend confirms it
+  useEffect(() => {
+    try {
+      // Leftovers from the old demo login
+      localStorage.removeItem('user');
+      localStorage.removeItem('userSession');
+    } catch {
+      // storage unavailable
     }
-    
-    return false;
+    if (!getToken()) {
+      setIsLoading(false);
+      return;
+    }
+    apiJson<User>('/api/auth/me')
+      .then(setUser)
+      .catch(() => logout())
+      .finally(() => setIsLoading(false));
+  }, [logout]);
+
+  useEffect(() => {
+    window.addEventListener(AUTH_EXPIRED_EVENT, logout);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, logout);
+  }, [logout]);
+
+  const startSession = ({ token, user }: AuthResponse) => {
+    setToken(token);
+    setUser(user);
   };
 
-  const logout = () => {
-    setUser(null);
-    setUserSession(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('userSession');
+  const login = async (email: string, password: string) => {
+    startSession(await apiJson<AuthResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    }));
   };
 
-  const value: AuthContextType = {
-    user,
-    userSession,
-    isAuthenticated: !!user,
-    login,
-    logout,
-    isLoading
+  const signup = async (data: SignupData) => {
+    startSession(await apiJson<AuthResponse>('/api/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }));
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const updateProfile = async (data: ProfileUpdate) => {
+    setUser(await apiJson<User>('/api/auth/me', { method: 'PUT', body: JSON.stringify(data) }));
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    await apiJson('/api/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{ user, isAuthenticated: !!user, isLoading, login, signup, logout, updateProfile, changePassword }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

@@ -1,24 +1,14 @@
-# Saaransh Backend
+# Saaransh Admin Backend
 
-Simple Node.js + Express backend for Saaransh admin panel connected to Neon PostgreSQL database.
-
-## Setup
+Express API for the admin dashboard, backed by Neon PostgreSQL, with email/password
+authentication (bcrypt + JWT). Folder structure, API list and environment variables are
+documented in [../README.md](../README.md).
 
 ```bash
 npm install
-npm start
+cp .env.sample .env      # DATABASE_URL, JWT_SECRET, FASTAPI_URL
+npm run dev              # or: npm start
 ```
 
-## Endpoints
-
-- `GET /health` - Health check
-- `GET /api/recent-activity` - Get recent comments from all bills
-- `GET /api/comments/:bill` - Get comments for specific bill (bill_1, bill_2, bill_3)
-- `POST /api/comments/:bill` - Add new comment to a bill
-- `GET /api/sentiment/:bill` - Get sentiment distribution for a bill
-- `GET /api/summaries/:bill` - Get sentiment summaries (overall, positive, negative) from documents table
-
-## Database
-
-Connected to Neon PostgreSQL via DATABASE_URL in .env
-Tables: bill_1_comments, bill_2_comments, bill_3_comments, documents
+Tables: `admin_users` (created automatically on start), `documents`,
+`bill_1_comments`, `bill_2_comments`, `bill_3_comments`.

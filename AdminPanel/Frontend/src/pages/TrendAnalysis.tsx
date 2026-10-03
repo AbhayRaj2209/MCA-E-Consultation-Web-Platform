@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Users, FileText, Building2, Briefcase, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { apiFetch } from '@/lib/api';
 
 const normalizeStakeholderType = (value: string | null | undefined): string => {
   const raw = String(value || '').trim().toLowerCase();
@@ -33,10 +34,10 @@ const TrendAnalysis = () => {
         setErrorMessage('');
 
         const [bill1Res, bill2Res, bill3Res, consultRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/api/comments/bill_1?limit=10000`),
-          fetch(`${import.meta.env.VITE_API_URL}/api/comments/bill_2?limit=10000`),
-          fetch(`${import.meta.env.VITE_API_URL}/api/comments/bill_3?limit=10000`),
-          fetch(`${import.meta.env.VITE_API_URL}/api/consultations`)
+          apiFetch(`/api/comments/bill_1?limit=10000`),
+          apiFetch(`/api/comments/bill_2?limit=10000`),
+          apiFetch(`/api/comments/bill_3?limit=10000`),
+          apiFetch(`/api/consultations`)
         ]);
 
         const [bill1Json, bill2Json, bill3Json, consultJson] = await Promise.all([

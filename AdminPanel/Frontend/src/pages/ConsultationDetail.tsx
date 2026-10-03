@@ -14,6 +14,7 @@ import ViewFullTextModal from '@/components/ViewFullTextModal';
 import SentimentDistributionCard from '@/components/SentimentDistributionCard';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { apiFetch } from '@/lib/api';
 
 const normalizeStakeholderType = (value: string | null | undefined): string => {
   const raw = String(value || '').trim().toLowerCase();
@@ -141,7 +142,7 @@ const ConsultationDetail = () => {
     setIsGenerating(prev => ({ ...prev, [loadingKey]: true }));
     try {
       const billKey = consultation?.bill || `bill_${id}`;
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/generate-overview/${billKey}`, {
+      const res = await apiFetch(`/api/generate-overview/${billKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, section: sectionId })
@@ -569,7 +570,7 @@ const ConsultationDetail = () => {
     const fetchData = async () => {
       try {
         // fetch consultations to get bill key and metadata
-        const cRes = await fetch(`${import.meta.env.VITE_API_URL}/api/consultations`);
+        const cRes = await apiFetch(`/api/consultations`);
         const cJson = await cRes.json();
         let meta = null;
         if (cJson.ok) {
@@ -580,33 +581,33 @@ const ConsultationDetail = () => {
           setConsultation(meta);
           // fetch comments for the bill key (e.g., bill_1)
           const billKey = meta.bill || `bill_${meta.id}`;
-          const commentsRes = await fetch(`${import.meta.env.VITE_API_URL}/api/comments/${billKey}`);
+          const commentsRes = await apiFetch(`/api/comments/${billKey}`);
           const commentsJson = await commentsRes.json();
           const rows = commentsJson.ok ? commentsJson.data : [];
 
           // Fetch summaries from documents table
-          const summariesRes = await fetch(`${import.meta.env.VITE_API_URL}/api/summaries/${billKey}`);
+          const summariesRes = await apiFetch(`/api/summaries/${billKey}`);
           const summariesJson = await summariesRes.json();
           if (summariesJson.ok && summariesJson.data) {
             setSummaries(summariesJson.data);
           }
 
           // Fetch section-wise summaries
-          const sectionsRes = await fetch(`${import.meta.env.VITE_API_URL}/api/sections/${billKey}`);
+          const sectionsRes = await apiFetch(`/api/sections/${billKey}`);
           const sectionsJson = await sectionsRes.json();
           if (sectionsJson.ok && sectionsJson.data) {
             setSectionSummaries(sectionsJson.data);
           }
 
           // Fetch section-wise sentiment summaries (positive/negative)
-          const sectionSentimentsRes = await fetch(`${import.meta.env.VITE_API_URL}/api/section-sentiments/${billKey}`);
+          const sectionSentimentsRes = await apiFetch(`/api/section-sentiments/${billKey}`);
           const sectionSentimentsJson = await sectionSentimentsRes.json();
           if (sectionSentimentsJson.ok && sectionSentimentsJson.data) {
             setSectionSentiments(sectionSentimentsJson.data);
           }
 
           // Fetch sentiment distribution from database
-          const sentimentRes = await fetch(`${import.meta.env.VITE_API_URL}/api/sentiment/${billKey}`);
+          const sentimentRes = await apiFetch(`/api/sentiment/${billKey}`);
           const sentimentJson = await sentimentRes.json();
           if (sentimentJson.ok && sentimentJson.data) {
             const counts = { Positive: 0, Negative: 0, Neutral: 0 };

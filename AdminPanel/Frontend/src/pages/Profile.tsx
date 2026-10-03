@@ -3,42 +3,100 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { User, Mail, Phone, Building, Calendar, MapPin, Edit3, Save, X } from "lucide-react";
-import { useState } from "react";
+import { User, Mail, Phone, Building, Briefcase, Calendar, MapPin, Edit3, Save, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { apiJson } from "@/lib/api";
+import { getInitials } from "@/lib/user";
+
+interface Consultation {
+  status: string;
+  submissions: number;
+}
+
+const toForm = (user: ReturnType<typeof useAuth>["user"]) => ({
+  fullName: user?.full_name ?? "",
+  phone: user?.phone ?? "",
+  designation: user?.designation ?? "",
+  department: user?.department ?? "",
+  location: user?.location ?? "",
+  bio: user?.bio ?? ""
+});
+
+const NotSet = () => <span className="text-slate-400 italic">Not set</span>;
 
 const Profile = () => {
+  const { user, updateProfile } = useAuth();
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState({
-    name: "Ishaan Saxena",
-    email: "ishaan.saxena@mca.gov.in",
-    phone: "+91 9876543210",
-    department: "Ministry of Corporate Affairs",
-    designation: "Policy Analyst",
-    location: "Delhi, India",
-    joinDate: "2023-06-15",
-    bio: "Experienced policy analyst specializing in corporate governance and regulatory compliance. Leading digital transformation initiatives in government processes."
-  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [form, setForm] = useState(() => toForm(user));
+  const [stats, setStats] = useState<{ active: number; total: number; consultations: number } | null>(null);
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Here you would typically save to backend
+  useEffect(() => {
+    if (!isEditing) setForm(toForm(user));
+  }, [user, isEditing]);
+
+  useEffect(() => {
+    apiJson<Consultation[]>("/api/consultations")
+      .then((list) => setStats({
+        consultations: list.length,
+        active: list.filter((c) => c.status === "In Progress").length,
+        total: list.reduce((sum, c) => sum + (c.submissions || 0), 0)
+      }))
+      .catch(() => setStats(null));
+  }, []);
+
+  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const handleSave = async () => {
+    if (form.fullName.trim().length < 2) {
+      toast({ title: "Invalid name", description: "Full name must be at least 2 characters.", variant: "destructive" });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateProfile({ ...form, fullName: form.fullName.trim() });
+      setIsEditing(false);
+      toast({ title: "Profile updated", description: "Your changes have been saved." });
+    } catch (err) {
+      toast({
+        title: "Could not save profile",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (!user) return null;
+
+  const fields: { key: keyof typeof form; label: string; icon: React.ElementType; placeholder: string }[] = [
+    { key: "fullName", label: "Full Name", icon: User, placeholder: "Your full name" },
+    { key: "phone", label: "Phone Number", icon: Phone, placeholder: "+91 98765 43210" },
+    { key: "designation", label: "Designation", icon: Briefcase, placeholder: "e.g. Policy Analyst" },
+    { key: "department", label: "Department", icon: Building, placeholder: "e.g. Ministry of Corporate Affairs" },
+    { key: "location", label: "Location", icon: MapPin, placeholder: "e.g. New Delhi" }
+  ];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">My Profile</h1>
-          <p className="text-slate-600">Manage your account information and preferences</p>
+          <p className="text-slate-600">Manage your account information</p>
         </div>
         <div className="flex gap-2">
           {isEditing ? (
             <>
-              <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
                 <Save className="w-4 h-4 mr-2" />
-                Save Changes
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
-              <Button variant="outline" onClick={() => setIsEditing(false)}>
+              <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
                 <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
@@ -53,141 +111,95 @@ const Profile = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Picture and Basic Info */}
         <Card className="lg:col-span-1">
           <CardHeader className="text-center">
-            <div className="mx-auto w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <User className="w-12 h-12 text-blue-600" />
+            <div className="mx-auto w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-3xl font-semibold text-blue-700">
+              {getInitials(user.full_name)}
             </div>
-            <CardTitle>{profile.name}</CardTitle>
-            <CardDescription>{profile.designation}</CardDescription>
+            <CardTitle>{user.full_name}</CardTitle>
+            {user.designation && <CardDescription>{user.designation}</CardDescription>}
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center text-sm text-slate-600">
-              <Building className="w-4 h-4 mr-2" />
-              {profile.department}
-            </div>
-            <div className="flex items-center text-sm text-slate-600">
-              <MapPin className="w-4 h-4 mr-2" />
-              {profile.location}
-            </div>
+            {user.department && (
+              <div className="flex items-center text-sm text-slate-600">
+                <Building className="w-4 h-4 mr-2" />
+                {user.department}
+              </div>
+            )}
+            {user.location && (
+              <div className="flex items-center text-sm text-slate-600">
+                <MapPin className="w-4 h-4 mr-2" />
+                {user.location}
+              </div>
+            )}
             <div className="flex items-center text-sm text-slate-600">
               <Calendar className="w-4 h-4 mr-2" />
-              Joined {new Date(profile.joinDate).toLocaleDateString()}
+              Joined {new Date(user.created_at).toLocaleDateString()}
             </div>
           </CardContent>
         </Card>
 
-        {/* Detailed Information */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Contact Information</CardTitle>
-            <CardDescription>Update your contact details and preferences</CardDescription>
+            <CardTitle>Account Information</CardTitle>
+            <CardDescription>Your details as entered at sign up</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <div className="flex items-center">
-                  <User className="w-4 h-4 mr-2 text-slate-500" />
-                  {isEditing ? (
-                    <Input
-                      id="name"
-                      value={profile.name}
-                      onChange={(e) => setProfile({...profile, name: e.target.value})}
-                    />
-                  ) : (
-                    <span className="text-slate-700">{profile.name}</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label>Email Address</Label>
                 <div className="flex items-center">
                   <Mail className="w-4 h-4 mr-2 text-slate-500" />
-                  {isEditing ? (
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({...profile, email: e.target.value})}
-                    />
-                  ) : (
-                    <span className="text-slate-700">{profile.email}</span>
-                  )}
+                  <span className="text-slate-700">{user.email}</span>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <div className="flex items-center">
-                  <Phone className="w-4 h-4 mr-2 text-slate-500" />
-                  {isEditing ? (
-                    <Input
-                      id="phone"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({...profile, phone: e.target.value})}
-                    />
-                  ) : (
-                    <span className="text-slate-700">{profile.phone}</span>
-                  )}
+              {fields.map(({ key, label, icon: Icon, placeholder }) => (
+                <div className="space-y-2" key={key}>
+                  <Label htmlFor={key}>{label}</Label>
+                  <div className="flex items-center">
+                    <Icon className="w-4 h-4 mr-2 text-slate-500" />
+                    {isEditing ? (
+                      <Input id={key} value={form[key]} onChange={set(key)} placeholder={placeholder} />
+                    ) : (
+                      <span className="text-slate-700">{form[key] || <NotSet />}</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="designation">Designation</Label>
-                <div className="flex items-center">
-                  <Building className="w-4 h-4 mr-2 text-slate-500" />
-                  {isEditing ? (
-                    <Input
-                      id="designation"
-                      value={profile.designation}
-                      onChange={(e) => setProfile({...profile, designation: e.target.value})}
-                    />
-                  ) : (
-                    <span className="text-slate-700">{profile.designation}</span>
-                  )}
-                </div>
-              </div>
+              ))}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="bio">Bio</Label>
               {isEditing ? (
-                <Textarea
-                  id="bio"
-                  value={profile.bio}
-                  onChange={(e) => setProfile({...profile, bio: e.target.value})}
-                  rows={3}
-                />
+                <Textarea id="bio" value={form.bio} onChange={set("bio")} rows={3} maxLength={1000}
+                  placeholder="A short description of your role" />
               ) : (
-                <p className="text-slate-700 p-3 bg-slate-50 rounded-md">{profile.bio}</p>
+                <p className="text-slate-700 p-3 bg-slate-50 rounded-md">{form.bio || <NotSet />}</p>
               )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Activity Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>Activity Summary</CardTitle>
-          <CardDescription>Your recent activity on the platform</CardDescription>
+          <CardTitle>Platform Summary</CardTitle>
+          <CardDescription>Live figures from the consultation database</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">3</div>
+              <div className="text-2xl font-bold text-blue-600">{stats ? stats.active : "–"}</div>
               <div className="text-sm text-slate-600">Active Consultations</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">8</div>
+              <div className="text-2xl font-bold text-green-600">{stats ? stats.total : "–"}</div>
               <div className="text-sm text-slate-600">Total Comments Analyzed</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">4.4</div>
-              <div className="text-sm text-slate-600">Avg Confidence Score</div>
+              <div className="text-2xl font-bold text-purple-600">{stats ? stats.consultations : "–"}</div>
+              <div className="text-sm text-slate-600">Total Consultations</div>
             </div>
           </div>
         </CardContent>

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, Menu, X, User, Settings, Shield, LogOut, MapPin, Download, FileText, BarChart3 } from 'lucide-react';
+import { Search, Bell, Menu, X, User, Settings, Shield, LogOut, Clock, Download, FileText, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDateTime, getInitials } from '@/lib/user';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -27,7 +28,8 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
   const notificationRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { user, userSession, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const lastLogin = formatDateTime(user?.last_login_at);
 
   // Mock search data - replace with actual API call if needed
   const mockSearchData: SearchResult[] = [
@@ -158,7 +160,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
         </button>
         
         <img 
-          src="https://raw.githubusercontent.com/Ishaan145/Saaransh/main/saaransh-app/public/mca.png" 
+          src="/mca.png"
           alt="MCA Emblem" 
           className="h-10 mr-2 sm:mr-4"
         />
@@ -308,28 +310,29 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center space-x-2 cursor-pointer p-1"
           >
-            <img 
-              src={user?.avatar || "https://placehold.co/40x40/E2E8F0/475569?text=U"} 
-              alt="User Avatar" 
-              className="rounded-full h-9 w-9" 
-            />
+            <div
+              className="rounded-full h-9 w-9 bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold"
+              aria-hidden="true"
+            >
+              {getInitials(user?.full_name)}
+            </div>
             <div className="hidden md:block text-sm">
-              <p className="font-semibold text-slate-700">{user?.name}</p>
-              <p className="text-slate-500">{user?.role}</p>
+              <p className="font-semibold text-slate-700">{user?.full_name}</p>
+              {user?.designation && <p className="text-slate-500">{user.designation}</p>}
             </div>
           </div>
 
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden z-30">
               <div className="p-3 border-b border-slate-200">
-                <p className="font-semibold text-slate-700">{user?.name}</p>
+                <p className="font-semibold text-slate-700">{user?.full_name}</p>
                 <p className="text-xs text-slate-500 truncate">
                   {user?.email}
                 </p>
-                {userSession && (
+                {lastLogin && (
                   <div className="mt-2 text-xs text-slate-500 flex items-center">
-                    <MapPin size={12} className="mr-1.5" />
-                    Last login from {userSession.location}
+                    <Clock size={12} className="mr-1.5" />
+                    Last login {lastLogin}
                   </div>
                 )}
               </div>

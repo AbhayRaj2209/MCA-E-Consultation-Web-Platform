@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { STANCE_COLORS } from '@/data/mockData';
+import { apiFetch } from '@/lib/api';
 
 const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
@@ -18,8 +19,8 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
       const [recentRes, consultRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/api/recent-activity`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/consultations`)
+        apiFetch(`/api/recent-activity`),
+        apiFetch(`/api/consultations`)
       ]);
 
       if (!recentRes.ok) throw new Error(`Recent activity HTTP ${recentRes.status}`);

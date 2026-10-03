@@ -9,10 +9,6 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const userSession = {
-    location: 'Delhi, India'
-  };
-
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };

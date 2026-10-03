@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts';
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api';
 
 const normalizeStakeholderType = (value: string | null | undefined): string => {
   const raw = String(value || '').trim().toLowerCase();
@@ -35,10 +36,10 @@ const StakeholderAnalytics = () => {
         
         // Fetch from all 3 bills in parallel
         const [bill1Res, bill2Res, bill3Res, consultRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/api/comments/bill_1?limit=1000`),
-          fetch(`${import.meta.env.VITE_API_URL}/api/comments/bill_2?limit=1000`),
-          fetch(`${import.meta.env.VITE_API_URL}/api/comments/bill_3?limit=1000`),
-          fetch(`${import.meta.env.VITE_API_URL}/api/consultations`)
+          apiFetch(`/api/comments/bill_1?limit=1000`),
+          apiFetch(`/api/comments/bill_2?limit=1000`),
+          apiFetch(`/api/comments/bill_3?limit=1000`),
+          apiFetch(`/api/consultations`)
         ]);
 
         const [bill1Json, bill2Json, bill3Json, consultJson] = await Promise.all([
