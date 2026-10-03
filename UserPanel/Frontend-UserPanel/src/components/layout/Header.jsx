@@ -2,7 +2,7 @@ import React from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import goiLogo from "@/assets/goi-logo.png";
+import { GOI_LOGO as goiLogo } from "@/config/constants";
 
 export const Header = () => {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ export const Header = () => {
   const handleSearch = (e) => {
     if (e.key === "Enter" || e.type === "click") {
       if (searchQuery.trim()) {
-        navigate(`/consultation-listing?search=${searchQuery}`);
+        navigate(`/consultation-listing?search=${encodeURIComponent(searchQuery.trim())}`);
       }
     }
   };

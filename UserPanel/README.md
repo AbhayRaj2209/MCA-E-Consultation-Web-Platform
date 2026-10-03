@@ -1,71 +1,94 @@
-# User Panel - E-Consultation Platform
+# User Panel — E-Consultation Platform
 
-Public platform for citizens to participate in government consultations by viewing documents and submitting feedback.
+Public platform where citizens read draft legislation from the Ministry of Corporate Affairs and
+submit feedback. Each comment is analysed for sentiment by an ML model and shown to
+officials in the Admin Panel.
 
 ## Tech Stack
 
-**Frontend:** React 18, Vite, TailwindCSS, Shadcn/ui, React Query, . 
-**Backend:** Node.js, Express, PostgreSQL, Twilio (OTP), Nodemailer, Google TTS
+**Frontend:** React 18, Vite, Tailwind CSS, shadcn/ui (Radix), React Router
+**Backend:** Node.js, Express, PostgreSQL (Neon), Twilio Verify (SMS OTP), Google TTS, Helmet, express-rate-limit
+**ML:** FastAPI sentiment model (`../models-new`)
 
-##  Quick Start
-
-### Frontend Setup
-```bash
-cd UserPanel/Frontend-UserPanel
-npm install
-```
-
-Create `.env` file:
-.env
-VITE_API_URL=http://localhost:3000
-DATABASE_URL=
+## Architecture
 
 ```
-
-Run server:
-```bash
-npm run dev  # http://localhost:5173
+Browser (React) ──► Backend-UserPanel (Express) ──► PostgreSQL
+                                   │──► Twilio Verify (OTP SMS)
+                                   │──► FastAPI (sentiment)
+                                   └──► Google TTS (section audio)
 ```
 
-### Backend Setup
+## Folder structure
+
+```
+UserPanel/
+├── Frontend-UserPanel/
+│   ├── public/                     # Static files (logo, public notice PDF)
+│   └── src/
+│       ├── main.jsx                # React entry
+│       ├── App.jsx                 # Routes
+│       ├── config/constants.js     # API base URL, logo path
+│       ├── services/api.js         # All backend calls (OTP, submit, summary)
+│       ├── pages/
+│       │   ├── EConsultationLanding.jsx
+│       │   ├── ConsultationListing.jsx
+│       │   ├── FilteredConsultation.jsx
+│       │   ├── NotFound.jsx
+│       │   └── documents/          # One page per consultation document
+│       │       ├── MdpFirmsConsultation.jsx      (/document-details)
+│       │       ├── DigitalCompetitionBill.jsx    (/document-details2)
+│       │       └── CompaniesAmendmentBill.jsx    (/document-details3)
+│       ├── components/
+│       │   ├── layout/             # Header, Footer, Breadcrumb
+│       │   ├── modals/CommentModal.jsx   # Details form -> (OTP) -> submit
+│       │   └── ui/                 # shadcn/ui primitives
+│       ├── hooks/use-toast.js
+│       └── lib/utils.js
+└── Backend-UserPanel/              # See Backend-UserPanel/README.md
+```
+
+## Feedback submission flow
+
+1. Citizen writes a comment on a document page and clicks **Submit**.
+2. `CommentModal` collects name, email, phone, ID (Aadhaar/PAN) and stakeholder type, validated in the browser.
+3. **Submit** → `POST /api/submit-comment` → the backend validates the data, runs sentiment analysis,
+   masks the ID number and stores the comment.
+
+> OTP phone verification (Twilio) is built but switched off. Enable it with `OTP_ENABLED=true` (backend)
+> and `VITE_OTP_ENABLED=true` (frontend); the modal then adds a Send OTP → Verify step.
+
+## Quick Start
+
+### Backend
 ```bash
 cd UserPanel/Backend-UserPanel
 npm install
+cp .env.sample .env      # DATABASE_URL, CORS_ORIGIN
+npm run dev              # http://localhost:5046
 ```
 
-Create `.env` file:
-```env
-PORT=3000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=consultation_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
-TWILIO_PHONE_NUMBER=your_twilio_phone
-ML_SERVICE_URL=http://localhost:5001
-```
-
-Run migrations & start:
+### Frontend
 ```bash
-psql -U postgres -d consultation_db -f migrations/20251205_add_ml_columns.sql
-npm start       # Production
-npm run dev     # Development
+cd UserPanel/Frontend-UserPanel
+npm install
+echo "VITE_API_URL=http://localhost:5046" > .env
+npm run dev              # http://localhost:8080
 ```
 
-## 📊 Features
+## Available scripts
 
-- **Browse Consultations:** View active consultations with filter/search
-- **Document Access:** Read details, download materials
-- **Comment Submission:** OTP-verified feedback with sentiment analysis
-- **Accessibility:** Text-to-speech, mobile-responsive design
+**Frontend:** `npm run dev` | `npm run build` | `npm run lint` | `npm run preview`
+**Backend:** `npm run dev` | `npm start` | `npm run migrate`
 
-## 📝 Available Scripts
+## Features
 
-**Frontend:** `npm run dev` | `npm run build` | `npm run lint`  
-**Backend:** `npm start` | `npm run dev`
+- **Browse consultations** with search and date filters
+- **Document access:** read, download and print the public notice PDF
+- **Multilingual summaries** (English, Hindi, Spanish, Tamil) with text-to-speech
+- **Feedback submission** with server-side sentiment analysis (optional OTP verification)
+- **Security:** rate limiting, strict validation, masked ID storage, CORS allow-list, security headers
 
-## 📄 License
+## License
 
-Smart India Hackathon 2025 - Ministry of Corporate Affairs
+Smart India Hackathon 2025 — Ministry of Corporate Affairs

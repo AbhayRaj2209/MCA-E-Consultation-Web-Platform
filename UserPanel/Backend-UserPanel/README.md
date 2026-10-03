@@ -1,39 +1,87 @@
-# MCA SIH Backend
+# MCA E-Consultation — User Panel Backend
 
-Backend API for MCA SIH E-Consultation platform. Stores comments and form submissions to PostgreSQL (Neon).
+Express API that lets citizens submit feedback on draft legislation. Every submission is
+validated, analysed for sentiment by the FastAPI ML service, and stored in PostgreSQL (Neon).
+
+> **OTP phone verification is built but currently switched off.** Turn it on with
+> `OTP_ENABLED=true` here and `VITE_OTP_ENABLED=true` in the frontend (plus Twilio keys).
+
+## Folder structure
+
+```
+Backend-UserPanel/
+├── server.js                      # Entry point: loads .env and starts the server
+├── src/
+│   ├── app.js                     # Express app: security middleware, routes, error handling
+│   ├── config/
+│   │   └── db.js                  # PostgreSQL connection pool
+│   ├── routes/                    # URL -> controller mapping (+ validation & rate limits)
+│   │   ├── comment.routes.js
+│   │   ├── otp.routes.js
+│   │   └── document.routes.js
+│   ├── controllers/               # Request handling logic
+│   │   ├── comment.controller.js
+│   │   ├── otp.controller.js
+│   │   └── document.controller.js
+│   ├── services/                  # External integrations
+│   │   ├── otp.service.js         # Twilio Verify SMS OTP (or console mode for local dev)
+│   │   └── sentiment.service.js   # FastAPI ML sentiment model
+│   ├── models/
+│   │   └── comment.model.js       # Database queries (parameterized)
+│   ├── middleware/
+│   │   ├── validate.js            # Input validation rules
+│   │   ├── rateLimiters.js        # Per-IP rate limits
+│   │   └── errorHandler.js        # Central error handler
+│   ├── data/
+│   │   └── documentSummaries.js   # Section-wise document summaries (EN/HI/ES/TA)
+│   └── utils/
+│       ├── AppError.js            # Error with a client-safe message
+│       └── mask.js                # Masks Aadhaar/PAN and phone numbers
+├── migrations/                    # SQL schema migrations
+└── scripts/
+    └── run-migration.js           # `npm run migrate`
+```
+
+## Request flow: submitting feedback
+
+```
+Frontend ──POST /api/submit-comment──► validate ► rate limit
+          ► [verify OTP, if enabled] ► sentiment.service (FastAPI) ► mask ID ► comment.model (INSERT)
+
+(OTP enabled only)
+Frontend ──POST /api/otp/send──► validate ► rate limit ► otp.service ──► Twilio SMS
+```
 
 ## Setup
 
-1. Install dependencies:
 ```bash
 npm install
+cp .env.sample .env      # fill in DATABASE_URL, Twilio keys, CORS_ORIGIN
+npm run dev              # development (nodemon)
+npm start                # production
 ```
 
-2. Configure `.env` file with your Neon database URL
+## API
 
-3. Run development server:
-```bash
-npm run dev
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/otp/send` | Send a 6-digit OTP (only when `OTP_ENABLED=true`) |
+| POST | `/api/submit-comment` | Validate, analyse sentiment, store feedback |
+| GET | `/api/documents/:id/summary?lang=en` | Section-wise summary with text-to-speech audio |
+| GET | `/api/documents/:id/audio-proxy?u=` | Streams Google TTS audio (host allow-listed) |
+| GET | `/health` | Health check |
+
+### POST /api/otp/send
+```json
+{ "phone": "9876543210" }
 ```
-
-Or production:
-```bash
-npm start
-```
-
-## API Endpoints
 
 ### POST /api/submit-comment
-Submit comment/form data to the database.
-
-**Request Body:**
 ```json
 {
   "documentId": 1,
   "section": "Section 1",
   "commentData": "This is my detailed comment",
-  "sentiment": "positive",
-  "summary": "Brief summary of the comment",
   "commenterName": "John Doe",
   "commenterEmail": "john@example.com",
   "commenterPhone": "9876543210",
@@ -42,87 +90,49 @@ Submit comment/form data to the database.
   "idNumber": "123456789012",
   "stakeholderType": "individual",
   "supportedDocFilename": "document.pdf",
-  "supportedDocData": null
+  "otp": "123456"            // only when OTP is enabled
 }
 ```
 
-**Response:**
+Response:
 ```json
 {
   "success": true,
   "message": "Comment submitted successfully",
-  "data": {
-    "comments_id": 1,
-    "document_id": 1,
-    "section": "Section 1",
-    ...
-  }
+  "data": { "commentId": 1 },
+  "sentiment": { "sentiment": "positive", "confidence": 0.92, "strong_opinion": false, "keywords": [] }
 }
 ```
 
-### GET /api/comments/:documentId
-Retrieve all comments for a specific document.
+Comments are read by the Admin Panel backend; this service exposes no endpoint that returns citizen data.
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": [...]
-}
-```
+## Security
 
-### GET /api/comments
-Retrieve all comments across all documents (admin only).
+- **OTP verification (switchable)** — Twilio Verify; 60 s resend cooldown, max 5 OTPs per number per hour, codes are single-use
+- **Input validation** — strict formats for phone, email, Aadhaar/PAN, allowed stakeholder types, length limits
+- **Data minimisation** — Aadhaar/PAN stored masked (`XXXXXXXX9012`); responses never echo personal data
+- **Rate limiting** — global, OTP and submission limits per IP
+- **CORS allow-list**, **Helmet** security headers, 2 MB request body limit
+- **Server-side sentiment only** — client cannot set its own sentiment
+- **Parameterized SQL** — no SQL injection
+- **Safe errors** — 5xx responses never leak internal details
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": [...]
-}
-```
+## Environment variables
 
-### PUT /api/comments/:commentId
-Update an existing comment.
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string (Neon) |
+| `PORT` | Server port (default 5046) |
+| `NODE_ENV` | `development` / `production` |
+| `FASTAPI_URL` | Sentiment model service URL |
+| `OTP_ENABLED` | `true` to require OTP before submitting (default `false`) |
+| `OTP_PROVIDER` | `twilio` (real SMS, default) or `console` (OTP printed in server log — local testing only) |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` | Twilio Verify credentials |
+| `CORS_ORIGIN` | Comma-separated frontend origins allowed to call the API |
+| `TRUST_PROXY` | Number of reverse proxies in front of the server (Render = 1) |
+| `RATE_LIMIT_MAX_REQUESTS` | Global requests per IP per 15 minutes (default 300) |
 
-**Request Body:**
-```json
-{
-  "commentData": "Updated comment text",
-  "sentiment": "negative",
-  "summary": "Updated summary"
-}
-```
+## Database
 
-## Database Table Schema
-
-```sql
-CREATE TABLE IF NOT EXISTS bill_1_comments (
-    comments_id SERIAL PRIMARY KEY,
-    document_id INTEGER NOT NULL REFERENCES documents(document_id) ON DELETE CASCADE,
-    section VARCHAR(255),
-    comment_data TEXT NOT NULL,
-    sentiment VARCHAR(20),
-    summary TEXT,
-    supported_doc BYTEA,
-    supported_doc_filename VARCHAR(255),
-    commenter_name VARCHAR(255),
-    commenter_email VARCHAR(320),
-    commenter_phone VARCHAR(30),
-    commenter_address TEXT,
-    id_type VARCHAR(100),
-    id_number VARCHAR(200),
-    stakeholder_type VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-  -- Migration note:
-  -- If you are upgrading an existing database, run the SQL in `migrations/20251205_add_ml_columns.sql` to add ML metadata columns (`confidence_score`, `ml_used`, `ml_model`).
-```
-
-## Environment Variables
-
-- `DATABASE_URL`: PostgreSQL connection string (Neon)
-- `PORT`: Server port (default: 5000)
-- `NODE_ENV`: Environment mode (development/production)
+Table `bill_1_comments` — see `migrations/` for schema changes. Run `npm run migrate` to add the
+sentiment columns (`confidence`, `strong_opinion`, `keywords`).

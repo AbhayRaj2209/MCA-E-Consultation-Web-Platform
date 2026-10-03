@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { sendOtp, submitComment } from "@/services/api";
+import { OTP_ENABLED } from "@/config/constants";
 
 export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile, documentId, section }) => {
   const [step, setStep] = useState('confirm');
@@ -21,10 +23,15 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
   const [otp, setOtp] = useState('');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
   const { toast } = useToast();
 
-  // Backend API URL
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
 
   // Validation functions
   const validateEmail = (email) => {
@@ -33,9 +40,9 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
   };
 
   const validatePhone = (phone) => {
-    // Remove any non-digit characters and check if it's exactly 10 digits
+    // Indian mobile numbers: 10 digits starting with 6-9
     const cleanPhone = phone.replace(/\D/g, '');
-    return cleanPhone.length === 10;
+    return /^[6-9]\d{9}$/.test(cleanPhone);
   };
 
   const validateGovernmentId = (idType, idNumber) => {
@@ -74,7 +81,7 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
     } else if (!validatePhone(formData.phone)) {
-      newErrors.phone = 'Please enter a valid 10-digit phone number';
+      newErrors.phone = 'Please enter a valid 10-digit Indian mobile number';
     }
 
     // No organization-specific validation required; user selects their entity type
@@ -98,7 +105,7 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
     setStep('details');
   };
 
-  const handleSendOTP = () => {
+  const handleSendOTP = async () => {
     if (!validateForm()) {
       toast({
         title: "Validation Error",
@@ -107,15 +114,41 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
       });
       return;
     }
-    setStep('otp');
-    toast({
-      title: "OTP Sent",
-      description: `An OTP has been sent to ${formData.email}`
-    });
+
+    setIsSendingOtp(true);
+    try {
+      const { ok, data } = await sendOtp(formData.phone);
+
+      if (!ok) {
+        toast({
+          title: "Could not send OTP",
+          description: data.message || "Please try again later.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setOtp('');
+      setStep('otp');
+      setResendIn(60);
+      toast({
+        title: "OTP Sent",
+        description: `An OTP has been sent to +91 ******${formData.phone.slice(-4)}`
+      });
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast({
+        title: "Could not send OTP",
+        description: "Network error. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSendingOtp(false);
+    }
   };
 
   const handleVerifySubmit = async () => {
-    if (otp.length !== 6) {
+    if (!/^\d{6}$/.test(otp)) {
       toast({
         title: "Error",
         description: "Please enter a valid 6-digit OTP.",
@@ -123,7 +156,23 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
       });
       return;
     }
+    await submitFeedback();
+  };
 
+  // OTP disabled: details form validate karke seedha submit
+  const handleDirectSubmit = async () => {
+    if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please correct the errors in the form before proceeding.",
+        variant: "destructive"
+      });
+      return;
+    }
+    await submitFeedback();
+  };
+
+  const submitFeedback = async () => {
     setIsSubmitting(true);
     try {
       // Prepare data to send to backend
@@ -131,31 +180,20 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
         documentId: documentId || 1,
         section: section || null,
         commentData: comment || '',
-        sentiment: null,
-        summary: null,
-        commenterName: formData.fullName,
-        commenterEmail: formData.email,
+        commenterName: formData.fullName.trim(),
+        commenterEmail: formData.email.trim(),
         commenterPhone: formData.phone,
         commenterAddress: formData.address || null,
         idType: formData.govIdType,
         idNumber: formData.govIdNumber,
         stakeholderType: userType,
         supportedDocFilename: uploadedFile ? uploadedFile.name : null,
-        supportedDocData: null
+        ...(OTP_ENABLED && { otp })
       };
 
-      // Send to backend API
-      const response = await fetch(`${API_BASE_URL}/api/submit-comment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData)
-      });
+      const { ok, data } = await submitComment(submitData);
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (ok) {
         // Build sentiment display message
         let sentimentMessage = "Your comments have been submitted successfully.";
         if (data.sentiment) {
@@ -214,6 +252,7 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
     });
     setOtp('');
     setErrors({});
+    setResendIn(0);
   };
 
   // Phone number formatting function
@@ -379,9 +418,6 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
                 placeholder={
                   formData.govIdType === 'aadhar' ? 'Enter 12-digit Aadhar number' :
                   formData.govIdType === 'pan' ? 'Enter PAN (e.g., ABCDE1234F)' :
-                  formData.govIdType === 'voter' ? 'Enter 10-character Voter ID' :
-                  formData.govIdType === 'driving' ? 'Enter Driving License number' :
-                  formData.govIdType === 'passport' ? 'Enter Passport number' :
                   'Enter Government ID number'
                 }
                 className={errors.govIdNumber ? 'border-red-500' : ''}
@@ -394,9 +430,6 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
                   {validateGovernmentId(formData.govIdType, formData.govIdNumber) ? '✓ Valid Government ID' : 
                     formData.govIdType === 'aadhar' ? 'Format: 12 digits (e.g., 123456789012)' :
                     formData.govIdType === 'pan' ? 'Format: 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F)' :
-                    formData.govIdType === 'voter' ? 'Format: 10 alphanumeric characters' :
-                    formData.govIdType === 'driving' ? 'Format: 10-16 alphanumeric characters' :
-                    formData.govIdType === 'passport' ? 'Format: 6-9 alphanumeric characters' :
                     'Enter valid Government ID number'
                   }
                 </p>
@@ -429,22 +462,32 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
               </RadioGroup>
             </div>
 
-            <Button onClick={handleSendOTP} className="w-full">Send OTP</Button>
+            {OTP_ENABLED ? (
+              <Button onClick={handleSendOTP} className="w-full" disabled={isSendingOtp}>
+                {isSendingOtp ? 'Sending OTP...' : 'Send OTP'}
+              </Button>
+            ) : (
+              <Button onClick={handleDirectSubmit} className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit'}
+              </Button>
+            )}
           </div>
         )}
 
         {step === 'otp' && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              An OTP has been sent to +91 {formData.phone.replace(/\D/g, '').slice(-6)}...
+              An OTP has been sent to +91 ******{formData.phone.slice(-4)}. It is valid for 10 minutes.
             </p>
             <div>
               <Label htmlFor="otp">Enter OTP</Label>
               <Input
                 id="otp"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="Enter 6-digit OTP"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 maxLength={6}
                 disabled={isSubmitting}
               />
@@ -452,6 +495,24 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
             <Button onClick={handleVerifySubmit} className="w-full" disabled={isSubmitting}>
               {isSubmitting ? 'Submitting...' : 'Verify & Submit'}
             </Button>
+            <div className="flex items-center justify-between text-sm">
+              <button
+                type="button"
+                className="text-muted-foreground underline disabled:no-underline disabled:opacity-60"
+                onClick={() => setStep('details')}
+                disabled={isSubmitting}
+              >
+                Change details
+              </button>
+              <button
+                type="button"
+                className="text-gov-blue underline disabled:no-underline disabled:opacity-60"
+                onClick={handleSendOTP}
+                disabled={isSubmitting || isSendingOtp || resendIn > 0}
+              >
+                {resendIn > 0 ? `Resend OTP in ${resendIn}s` : isSendingOtp ? 'Sending...' : 'Resend OTP'}
+              </button>
+            </div>
           </div>
         )}
       </DialogContent>
