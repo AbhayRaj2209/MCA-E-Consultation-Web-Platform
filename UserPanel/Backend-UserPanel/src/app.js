@@ -18,27 +18,9 @@ app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
 app.use(morgan('combined'));
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-const allowedOrigins = (process.env.CORS_ORIGIN || '')
-  .split(',')
-  .map((o) => o.trim().replace(/\/$/, ''))
-  .filter(Boolean);
-
-// Local machine ka frontend kisi bhi port pe ho (Vite 8080 busy hone par 8081 le leta hai)
-const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
-
-if (allowedOrigins.length === 0) {
-  console.warn('WARNING: CORS_ORIGIN is not set - allowing requests from any origin.');
-}
-
+// Public API (no cookies / login), so any site may call it; abuse is stopped by validation + rate limits
 app.use(cors({
-  origin: (origin, callback) => {
-    const allowed = !origin
-      || allowedOrigins.length === 0
-      || allowedOrigins.includes(origin)
-      || LOCAL_ORIGIN.test(origin);
-    if (!allowed) console.warn(`CORS blocked request from origin: ${origin}`);
-    callback(null, allowed);
-  },
+  origin: true,
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));

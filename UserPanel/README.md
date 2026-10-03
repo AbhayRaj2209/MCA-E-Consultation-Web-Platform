@@ -64,7 +64,7 @@ UserPanel/
 ```bash
 cd UserPanel/Backend-UserPanel
 npm install
-cp .env.sample .env      # DATABASE_URL, CORS_ORIGIN
+cp .env.sample .env      # DATABASE_URL, FASTAPI_URL
 npm run dev              # http://localhost:5046
 ```
 
@@ -87,7 +87,7 @@ npm run dev              # http://localhost:8080
 - **Document access:** read, download and print the public notice PDF
 - **Multilingual summaries** (English, Hindi, Spanish, Tamil) with text-to-speech
 - **Feedback submission** with server-side sentiment analysis (optional OTP verification)
-- **Security:** rate limiting, strict validation, masked ID storage, CORS allow-list, security headers
+- **Security:** rate limiting, strict validation, masked ID storage, security headers
 
 ## License
 

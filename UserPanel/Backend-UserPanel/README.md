@@ -56,7 +56,7 @@ Frontend ──POST /api/otp/send──► validate ► rate limit ► otp.servi
 
 ```bash
 npm install
-cp .env.sample .env      # fill in DATABASE_URL, Twilio keys, CORS_ORIGIN
+cp .env.sample .env      # fill in DATABASE_URL, FASTAPI_URL
 npm run dev              # development (nodemon)
 npm start                # production
 ```
@@ -112,7 +112,7 @@ Comments are read by the Admin Panel backend; this service exposes no endpoint t
 - **Input validation** — strict formats for phone, email, Aadhaar/PAN, allowed stakeholder types, length limits
 - **Data minimisation** — Aadhaar/PAN stored masked (`XXXXXXXX9012`); responses never echo personal data
 - **Rate limiting** — global, OTP and submission limits per IP
-- **CORS allow-list**, **Helmet** security headers, 2 MB request body limit
+- **Helmet** security headers, 2 MB request body limit (CORS is open: the API is public and uses no cookies)
 - **Server-side sentiment only** — client cannot set its own sentiment
 - **Parameterized SQL** — no SQL injection
 - **Safe errors** — 5xx responses never leak internal details
@@ -128,7 +128,6 @@ Comments are read by the Admin Panel backend; this service exposes no endpoint t
 | `OTP_ENABLED` | `true` to require OTP before submitting (default `false`) |
 | `OTP_PROVIDER` | `twilio` (real SMS, default) or `console` (OTP printed in server log — local testing only) |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` | Twilio Verify credentials |
-| `CORS_ORIGIN` | Comma-separated frontend origins allowed to call the API |
 | `TRUST_PROXY` | Number of reverse proxies in front of the server (Render = 1) |
 | `RATE_LIMIT_MAX_REQUESTS` | Global requests per IP per 15 minutes (default 300) |
 
