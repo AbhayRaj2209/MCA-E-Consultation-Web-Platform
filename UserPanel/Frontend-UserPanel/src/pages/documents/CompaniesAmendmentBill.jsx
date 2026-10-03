@@ -19,8 +19,8 @@ const CompaniesAmendmentBill = () => {
   const [selectedSection, setSelectedSection] = useState('');
   const { toast } = useToast();
 
-  // Document ID - hardcoded to 1 for now, can be dynamic from route params
-  const documentId = 1;
+  // documents.document_id of the Companies Amendment Bill
+  const documentId = 3;
 
   const breadcrumbItems = [
     { label: "Home", href: "#" },

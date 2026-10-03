@@ -1,5 +1,8 @@
 // PostgreSQL (Neon) connection pool
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+// DATE columns as 'YYYY-MM-DD' strings; default Date objects shift a day across time zones
+types.setTypeParser(1082, (value) => value);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

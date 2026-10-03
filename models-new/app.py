@@ -126,7 +126,7 @@ def preprocess_text(text):
     return text
 
 # ----------- PREDICT -----------
-def predict_label(text):
+def predict_with_confidence(text):
     processed = preprocess_text(text)
 
     inputs = tokenizer(processed, return_tensors="pt", truncation=True, padding=True)
@@ -137,7 +137,11 @@ def predict_label(text):
         probs = F.softmax(outputs.logits, dim=1)
         pred = torch.argmax(probs, dim=1).item()
 
-    return label_map[model.config.id2label[pred]]
+    # confidence = probability of the predicted class (0-1)
+    return label_map[model.config.id2label[pred]], float(probs[0][pred])
+
+def predict_label(text):
+    return predict_with_confidence(text)[0]
 
 # ----------- REQUEST MODELS -----------
 class TextRequest(BaseModel):
@@ -157,8 +161,8 @@ def home():
 # ----------- SENTIMENT -----------
 @app.post("/predict")
 def predict(request: TextRequest):
-    sentiment = predict_label(request.text)
-    return {"text": request.text, "sentiment": sentiment}
+    sentiment, confidence = predict_with_confidence(request.text)
+    return {"text": request.text, "sentiment": sentiment, "confidence": round(confidence, 4)}
 
 # ----------- SUMMARIZATION (IMPROVED) -----------
 @app.post("/summarize-by-sentiment")

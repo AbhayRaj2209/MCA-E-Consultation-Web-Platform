@@ -16,7 +16,8 @@ app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
 app.use(helmet());
 // API bearer tokens se protected hai (cookies nahi), isliye CORS open rakha hai
 app.use(cors());
-app.use(express.json());
+// New bills can carry a base64 attachment (PDF), so allow larger bodies than the 100 KB default
+app.use(express.json({ limit: '15mb' }));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });

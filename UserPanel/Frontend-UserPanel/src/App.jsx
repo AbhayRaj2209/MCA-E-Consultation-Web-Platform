@@ -9,6 +9,7 @@ import FilteredConsultation from "./pages/FilteredConsultation";
 import MdpFirmsConsultation from "./pages/documents/MdpFirmsConsultation";
 import DigitalCompetitionBill from "./pages/documents/DigitalCompetitionBill";
 import CompaniesAmendmentBill from "./pages/documents/CompaniesAmendmentBill";
+import DocumentPage from "./pages/documents/DocumentPage";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/document-details" element={<MdpFirmsConsultation />} />
           <Route path="/document-details2" element={<DigitalCompetitionBill />} />
           <Route path="/document-details3" element={<CompaniesAmendmentBill />} />
+          <Route path="/documents/:id" element={<DocumentPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Footer />

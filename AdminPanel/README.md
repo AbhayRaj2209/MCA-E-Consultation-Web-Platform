@@ -1,7 +1,8 @@
 # Admin Panel — Project Saaransh
 
-Dashboard for MCA officials to review public consultation feedback: sentiment distribution,
-AI-generated summaries, stakeholder and trend analytics, word clouds and PDF reports.
+Dashboard for MCA officials to publish consultations (bills) and review public feedback:
+sentiment distribution, AI-generated summaries, stakeholder and trend analytics, word clouds and PDF reports.
+Bills published here appear in the user panel immediately; old bills can be archived or deleted.
 Officials sign up and sign in with email and password; every data API requires a valid login.
 
 ## Tech Stack
@@ -14,15 +15,16 @@ Officials sign up and sign in with email and password; every data API requires a
 ```
 AdminPanel/
 ├── backend/
-│   ├── index.js                     # Entry point: loads .env, creates admin_users table, starts server
-│   ├── migrations/001_create_admin_users.sql
+│   ├── index.js                     # Entry point: loads .env, ensures DB schema, starts server
+│   ├── migrations/                  # SQL reference for the schema
+│   ├── scripts/migrate-unified-comments.js  # One-time move from bill_N_comments to comments
 │   └── src/
 │       ├── app.js                   # Express app: middleware + routes
 │       ├── config/
 │       │   ├── db.js                # PostgreSQL pool
 │       │   ├── auth.js              # JWT secret / expiry, allowed sign-up domains
-│       │   └── bills.js             # Allow-list of bill tables (bill_1..bill_3)
-│       ├── db/schema.js             # CREATE TABLE IF NOT EXISTS admin_users
+│       │   └── bills.js             # "bill_<id>" keys used by the frontend
+│       ├── db/schema.js             # CREATE TABLE IF NOT EXISTS admin_users, comments (+ documents.archived_at)
 │       ├── routes/                  # URL -> controller (+ auth, validation, rate limits)
 │       │   ├── auth.routes.js
 │       │   ├── comment.routes.js
@@ -39,7 +41,7 @@ AdminPanel/
 │       │   ├── sentiment.service.js # FastAPI sentiment model
 │       │   └── summary.service.js   # Group summarisation model
 │       ├── middleware/              # requireAuth, validation, rate limits, error handler
-│       └── utils/validateInput.js   # Comment length / prompt-injection guard
+│       └── utils/                   # validateInput (prompt-injection guard), normalize (labels, masking)
 └── Frontend/
     ├── public/                      # Logos, word-cloud images
     └── src/
@@ -76,8 +78,22 @@ emails, rate limits (10 logins / 15 min, 5 sign-ups / hour per IP), password rul
 | GET | `/api/consultations`, `/api/documents`, `/api/recent-activity` | Login |
 | GET | `/api/comments/:bill`, `/api/admin/comments` | Login |
 | GET | `/api/sentiment/:bill`, `/api/summaries/:bill`, `/api/sections/:bill`, `/api/section-sentiments/:bill` | Login |
-| POST | `/api/generate-overview/:bill`, `/api/documents` | Login |
+| POST | `/api/generate-overview/:bill`, `/api/documents` (publish bill) | Login |
+| PATCH | `/api/documents/:id/archive` `{ archived: true/false }` | Login |
+| DELETE | `/api/documents/:id` (bill + its comments) | Login |
 | POST | `/api/submit-comment`, `/api/comments/:bill` | Public (rate limited) |
+
+## Database
+
+| Table | Purpose |
+|-------|---------|
+| `documents` | One row per bill. `archived_at` set = hidden from citizens |
+| `comments` | Every citizen comment for every bill (`document_id` FK, `ON DELETE CASCADE`; indexed by bill + date and bill + sentiment) |
+| `admin_users` | Admin accounts (bcrypt password hashes) |
+
+`index.js` creates any missing table/column on start. `scripts/migrate-unified-comments.js` moved the old
+`bill_1_comments` … `bill_3_comments` tables into `comments` (sections and stakeholder labels normalised,
+ID numbers masked).
 
 ## Quick Start
 

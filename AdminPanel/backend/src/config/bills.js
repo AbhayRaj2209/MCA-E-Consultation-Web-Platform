@@ -1,9 +1,11 @@
-// Each consultation (bill) has its own comments table: bill_1_comments, bill_2_comments, ...
-// Table names cannot be SQL parameters, so only keys from this allow-list are ever interpolated.
-const BILL_KEYS = ['bill_1', 'bill_2', 'bill_3'];
+// Frontend bills ko "bill_<document_id>" key se refer karta hai (e.g. bill_1, bill_12).
+// Sab comments ek hi `comments` table me hain, document_id se filtered.
+const parseBill = (bill) => {
+  const match = /^bill_(\d+)$/.exec(String(bill || ''));
+  const id = match ? parseInt(match[1], 10) : NaN;
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
 
-const isValidBill = (bill) => BILL_KEYS.includes(bill);
-const billToDocumentId = (bill) => parseInt(bill.split('_')[1], 10);
-const commentsTable = (bill) => `${bill}_comments`;
+const billKey = (documentId) => `bill_${documentId}`;
 
-module.exports = { BILL_KEYS, isValidBill, billToDocumentId, commentsTable };
+module.exports = { parseBill, billKey };

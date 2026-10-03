@@ -15,6 +15,7 @@ import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { BadgeCount } from "@/components/ui/badge-count";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useConsultations, FILTERS } from "@/hooks/useConsultations";
 
 const EConsultationLanding = () => {
   const navigate = useNavigate();
@@ -25,30 +26,9 @@ const EConsultationLanding = () => {
     { label: "E-Consultation" },
   ];
 
-  const handleBeyond7DaysClick = () => {
-    navigate("/consultation-listing");
-  };
-
-  const handleTodayClick = () => {
-    navigate("/filtered-consultation?filter=today&count=0");
-  };
-
-  const handleNext7DaysClick = () => {
-    navigate("/filtered-consultation?filter=next7days&count=0");
-  };
-
-  const handlePostedTodayClick = () => {
-    navigate("/filtered-consultation?filter=posted-today&count=0");
-  };
-
-  const handlePostedLast7DaysClick = () => {
-    navigate("/filtered-consultation?filter=posted-last7days&count=0");
-  };
-
-  const handlePostedEarlierClick = () => {
-    navigate("/filtered-consultation?filter=posted-earlier&count=1");
-  };
-
+  const { documents, loading } = useConsultations();
+  const count = (key) => (loading ? 0 : documents.filter(FILTERS[key].test).length);
+  const openFilter = (key) => navigate(`/filtered-consultation?filter=${key}`);
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
       {/* Global header from your app */}
@@ -184,7 +164,7 @@ const EConsultationLanding = () => {
             <li>AI-powered sentiment categorization of citizen comments</li>
             <li>Multi-ministry consultation support across Government of Delhi</li>
             <li>Multilingual content with audio and text summary</li>
-            <li>Secure OTP-based submission and comment tracking</li>
+            <li>Secure submission with masked ID storage</li>
             <li>Easy draft management and access to previous submissions</li>
           </ul>
         </section>
@@ -222,7 +202,7 @@ const EConsultationLanding = () => {
                   
 
                   <button
-                    onClick={handleNext7DaysClick}
+                    onClick={() => openFilter("next7days")}
                     className="w-full flex items-center justify-between p-5 hover:bg-orange-50/30 transition-colors group text-left"
                   >
                     <div>
@@ -234,25 +214,25 @@ const EConsultationLanding = () => {
                       </span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <BadgeCount count={1} />
+                      <BadgeCount count={count("next7days")} />
                       <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-orange-600 transition-colors transform group-hover:translate-x-1" />
                     </div>
                   </button>
 
                   <button
-                    onClick={handleBeyond7DaysClick}
+                    onClick={() => navigate("/consultation-listing")}
                     className="w-full flex items-center justify-between p-5 hover:bg-green-50/30 transition-colors group text-left"
                   >
                     <div>
                       <span className="text-gray-800 font-semibold text-base block group-hover:text-green-700 transition-colors">
-                        Beyond 7 Days
+                        All Consultations
                       </span>
                       <span className="text-xs text-gray-500 mt-1 block">
-                        Future deadlines
+                        Every document open for comments
                       </span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <BadgeCount count={3} />
+                      <BadgeCount count={loading ? 0 : documents.length} />
                       <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-green-600 transition-colors transform group-hover:translate-x-1" />
                     </div>
                   </button>
@@ -272,7 +252,7 @@ const EConsultationLanding = () => {
                       Posted Recently
                     </h3>
                     <p className="text-xs text-gray-500 font-medium">
-                      Archive
+                      By publish date
                     </p>
                   </div>
                 </div>
@@ -280,9 +260,25 @@ const EConsultationLanding = () => {
 
               <CardContent className="p-0">
                 <div className="divide-y divide-gray-100">
-                  {/* You can add rows for posted today / last 7 days later using their handlers */}
                   <button
-                    onClick={handlePostedEarlierClick}
+                    onClick={() => openFilter("posted-last7days")}
+                    className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors group text-left"
+                  >
+                    <div>
+                      <span className="text-gray-800 font-semibold text-base block group-hover:text-[#092044] transition-colors">
+                        Last 7 Days
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1 block">
+                        Newly published
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <BadgeCount count={count("posted-last7days")} />
+                      <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-[#092044] transition-colors transform group-hover:translate-x-1" />
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => openFilter("posted-earlier")}
                     className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors group text-left"
                   >
                     <div>
@@ -290,11 +286,11 @@ const EConsultationLanding = () => {
                         Earlier
                       </span>
                       <span className="text-xs text-gray-500 mt-1 block">
-                        Archive
+                        Posted more than a week ago
                       </span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <BadgeCount count={1} />
+                      <BadgeCount count={count("posted-earlier")} />
                       <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-[#092044] transition-colors transform group-hover:translate-x-1" />
                     </div>
                   </button>

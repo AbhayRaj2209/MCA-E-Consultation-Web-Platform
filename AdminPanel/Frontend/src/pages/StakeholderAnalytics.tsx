@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { toFiveScale, fiveScaleToPercent } from '@/lib/confidence';
 
 const normalizeStakeholderType = (value: string | null | undefined): string => {
   const raw = String(value || '').trim().toLowerCase();
@@ -34,27 +35,24 @@ const StakeholderAnalytics = () => {
       try {
         setLoading(true);
         
-        // Fetch from all 3 bills in parallel
-        const [bill1Res, bill2Res, bill3Res, consultRes] = await Promise.all([
-          apiFetch(`/api/comments/bill_1?limit=1000`),
-          apiFetch(`/api/comments/bill_2?limit=1000`),
-          apiFetch(`/api/comments/bill_3?limit=1000`),
+        // All comments across every bill in one request
+        const [commentsRes, consultRes] = await Promise.all([
+          apiFetch(`/api/admin/comments?limit=10000`),
           apiFetch(`/api/consultations`)
         ]);
 
-        const [bill1Json, bill2Json, bill3Json, consultJson] = await Promise.all([
-          bill1Res.json(),
-          bill2Res.json(),
-          bill3Res.json(),
+        const [commentsJson, consultJson] = await Promise.all([
+          commentsRes.json(),
           consultRes.json()
         ]);
 
-        // Combine all rows from all bills
-        const allRows = [
-          ...(bill1Res.ok && Array.isArray(bill1Json.data) ? bill1Json.data.map((r: any) => ({ ...r, bill: 'bill_1', billId: 1 })) : []),
-          ...(bill2Res.ok && Array.isArray(bill2Json.data) ? bill2Json.data.map((r: any) => ({ ...r, bill: 'bill_2', billId: 2 })) : []),
-          ...(bill3Res.ok && Array.isArray(bill3Json.data) ? bill3Json.data.map((r: any) => ({ ...r, bill: 'bill_3', billId: 3 })) : [])
-        ];
+        const allRows = commentsRes.ok && Array.isArray(commentsJson.data?.comments)
+          ? commentsJson.data.comments.map((r: any) => ({
+              ...r,
+              comment_data: r.text,
+              billId: parseInt(String(r.bill).replace('bill_', ''), 10)
+            }))
+          : [];
 
         // Map DB rows to frontend comment model
         const mapped = allRows.map((r: any) => {
@@ -68,7 +66,7 @@ const StakeholderAnalytics = () => {
           date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : (r.date || ''),
           stance: normalizedStance,
           summary: r.comment_data || r.summary || '',
-          confidenceScore_based_on_ensemble_model: r.confidence_score || r.confidence || r.confidenceScore_based_on_ensemble_model || 0,
+          confidenceScore_based_on_ensemble_model: toFiveScale(r.confidence),
           originalText: r.comment_data || r.originalText || '',
           keywords: r.keywords || [],
           consultationId: r.billId || r.consultationId || null
@@ -126,7 +124,7 @@ const StakeholderAnalytics = () => {
   const avgConfidenceRaw = allComments.length > 0
     ? allComments.reduce((sum, c) => sum + Number(c.confidenceScore_based_on_ensemble_model || 0), 0) / allComments.length
     : 0;
-  const avgConfidencePercent = avgConfidenceRaw <= 1 ? avgConfidenceRaw * 100 : avgConfidenceRaw;
+  const avgConfidencePercent = fiveScaleToPercent(avgConfidenceRaw);
   const avgConfidenceDisplay = `${avgConfidencePercent.toFixed(1)}%`;
 
   const activeConsultationCount = consultations.filter((c: any) => {
@@ -159,14 +157,14 @@ const StakeholderAnalytics = () => {
   }, {} as Record<string, { submissions: number; confidenceTotal: number; confidenceCount: number }>);
 
   const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const engagementData = Object.entries(monthMap)
+  const engagementData = (Object.entries(monthMap) as [string, { submissions: number; confidenceTotal: number; confidenceCount: number }][])
     .sort((a, b) => monthOrder.indexOf(a[0]) - monthOrder.indexOf(b[0]))
     .map(([name, val]) => {
       const avg = val.confidenceCount > 0 ? val.confidenceTotal / val.confidenceCount : 0;
       return {
         name,
         submissions: val.submissions,
-        quality: avg <= 1 ? Number((avg * 100).toFixed(1)) : Number(avg.toFixed(1))
+        quality: Number(fiveScaleToPercent(avg).toFixed(1))
       };
     });
 

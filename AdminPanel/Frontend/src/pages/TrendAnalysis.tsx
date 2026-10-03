@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { TrendingUp, Users, FileText, Building2, Briefcase, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { apiFetch } from '@/lib/api';
+import { toFiveScale, fiveScaleToPercent } from '@/lib/confidence';
 
 const normalizeStakeholderType = (value: string | null | undefined): string => {
   const raw = String(value || '').trim().toLowerCase();
@@ -33,29 +34,28 @@ const TrendAnalysis = () => {
         setLoading(true);
         setErrorMessage('');
 
-        const [bill1Res, bill2Res, bill3Res, consultRes] = await Promise.all([
-          apiFetch(`/api/comments/bill_1?limit=10000`),
-          apiFetch(`/api/comments/bill_2?limit=10000`),
-          apiFetch(`/api/comments/bill_3?limit=10000`),
+        // All comments across every bill in one request
+        const [commentsRes, consultRes] = await Promise.all([
+          apiFetch(`/api/admin/comments?limit=10000`),
           apiFetch(`/api/consultations`)
         ]);
 
-        const [bill1Json, bill2Json, bill3Json, consultJson] = await Promise.all([
-          bill1Res.ok ? bill1Res.json() : Promise.resolve({ ok: false, data: [] }),
-          bill2Res.ok ? bill2Res.json() : Promise.resolve({ ok: false, data: [] }),
-          bill3Res.ok ? bill3Res.json() : Promise.resolve({ ok: false, data: [] }),
+        const [commentsJson, consultJson] = await Promise.all([
+          commentsRes.ok ? commentsRes.json() : Promise.resolve({ ok: false, data: { comments: [] } }),
           consultRes.ok ? consultRes.json() : Promise.resolve({ ok: false, data: [] })
         ]);
 
-        if (!bill1Res.ok || !bill2Res.ok || !bill3Res.ok || !consultRes.ok) {
+        if (!commentsRes.ok || !consultRes.ok) {
           setErrorMessage('Some analytics endpoints failed. Showing only successfully fetched database records.');
         }
 
-        const allRows = [
-          ...(Array.isArray(bill1Json.data) ? bill1Json.data.map((r: any) => ({ ...r, billId: 1 })) : []),
-          ...(Array.isArray(bill2Json.data) ? bill2Json.data.map((r: any) => ({ ...r, billId: 2 })) : []),
-          ...(Array.isArray(bill3Json.data) ? bill3Json.data.map((r: any) => ({ ...r, billId: 3 })) : [])
-        ];
+        const allRows = Array.isArray(commentsJson.data?.comments)
+          ? commentsJson.data.comments.map((r: any) => ({
+              ...r,
+              comment_data: r.text,
+              billId: parseInt(String(r.bill).replace('bill_', ''), 10)
+            }))
+          : [];
 
         const consultationsData = Array.isArray(consultJson.data) ? consultJson.data : [];
 
@@ -70,7 +70,7 @@ const TrendAnalysis = () => {
           date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : (r.date || ''),
           stance: normalizedStance,
           summary: r.comment_data || r.summary || '',
-          confidenceScore_based_on_ensemble_model: r.confidence_score || r.confidence || r.confidenceScore_based_on_ensemble_model || 0,
+          confidenceScore_based_on_ensemble_model: toFiveScale(r.confidence),
           originalText: r.comment_data || r.originalText || '',
           keywords: r.keywords || [],
           consultationId: r.billId || r.consultationId || null
@@ -112,9 +112,7 @@ const TrendAnalysis = () => {
         return acc + Number(comment.confidenceScore_based_on_ensemble_model || 0);
       }, 0) / totalComments)
     : 0;
-  const averageConfidencePercent = averageConfidence <= 1
-    ? (averageConfidence * 100).toFixed(1)
-    : averageConfidence.toFixed(1);
+  const averageConfidencePercent = fiveScaleToPercent(averageConfidence).toFixed(1);
 
   const billEngagement = consultations.map(consultation => {
     const billComments = allComments.filter(c => c.consultationId === consultation.id);

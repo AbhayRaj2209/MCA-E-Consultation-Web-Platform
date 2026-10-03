@@ -1,99 +1,47 @@
 const pool = require('../config/db');
-const { isValidBill, commentsTable } = require('../config/bills');
+const { billKey } = require('../config/bills');
 
-// documents table khali/unavailable ho to purana static data dikhaya jaata hai
-const DEFAULT_CONSULTATIONS = [
-  {
-    id: 1,
-    bill_key: 'bill_1',
-    title: 'Establishment of Indian Multi-Disciplinary Partnership (MDP) firms by the Govt. of India',
-    status: 'In Progress',
-    endDate: '2025-10-10',
-    description: 'New guidelines for CSR implementation and reporting',
-    publishDate: '2025-09-01'
-  },
-  {
-    id: 2,
-    bill_key: 'bill_2',
-    title: 'Digital Competition Bill, 2025',
-    status: 'Completed',
-    endDate: '2025-08-31',
-    description: 'Proposed amendments to strengthen corporate governance and transparency',
-    publishDate: '2025-07-15'
-  },
-  {
-    id: 3,
-    bill_key: 'bill_3',
-    title: 'Companies Amendment Bill, 2025',
-    status: 'Completed',
-    endDate: '2025-07-15',
-    description: 'Amendments to improve the insolvency resolution process',
-    publishDate: '2025-06-01'
-  }
-];
+const toDateString = (d) => (d ? String(d).slice(0, 10) : null);
 
-async function countSubmissions(billKey) {
-  if (!isValidBill(billKey)) return 0;
-  try {
-    const r = await pool.query(`SELECT COUNT(*)::int AS count FROM ${commentsTable(billKey)}`);
-    return r.rows[0]?.count || 0;
-  } catch (e) {
-    console.warn(`Could not get count for ${billKey}:`, e.message || e);
-    return 0;
-  }
-}
+const statusOf = (doc) => {
+  if (doc.archived_at) return 'Archived';
+  if (!doc.comments_due_date) return 'Draft';
+  return doc.comments_due_date >= new Date().toISOString().slice(0, 10) ? 'In Progress' : 'Completed';
+};
 
-async function getDefaultConsultations() {
-  return Promise.all(DEFAULT_CONSULTATIONS.map(async (b) => ({
-    ...b,
-    submissions: await countSubmissions(b.bill_key)
-  })));
-}
-
-const toDateString = (d) => (d ? d.toISOString().split('T')[0] : null);
-
-// GET /api/consultations  -> documents table + submissions count per bill
+// GET /api/consultations  -> every bill (incl. archived) with its submissions count
 async function getConsultations(req, res, next) {
   try {
-    const docResult = await pool.query(
-      `SELECT document_id, type_of_document, type_of_act, posted_on, comments_due_date, document_name,
-              summary, positive_summary, negative_summary, created_at
-       FROM documents
-       ORDER BY created_at DESC`
+    const { rows } = await pool.query(
+      `SELECT d.document_id, d.type_of_document, d.type_of_act, d.posted_on, d.comments_due_date,
+              d.document_name, d.summary, d.created_at, d.archived_at,
+              COUNT(c.comments_id)::int AS submissions
+       FROM documents d
+       LEFT JOIN comments c ON c.document_id = d.document_id
+       GROUP BY d.document_id
+       ORDER BY d.created_at DESC`
     );
 
-    if (docResult.rows.length === 0) {
-      return res.json({ ok: true, data: await getDefaultConsultations() });
-    }
-
-    const consultations = await Promise.all(docResult.rows.map(async (doc) => {
-      const billKey = `bill_${doc.document_id}`;
-      const status = doc.comments_due_date
-        ? (new Date(doc.comments_due_date) >= new Date() ? 'In Progress' : 'Completed')
-        : 'Draft';
-
-      return {
+    res.json({
+      ok: true,
+      data: rows.map((doc) => ({
         id: doc.document_id,
-        bill_key: billKey,
+        bill_key: billKey(doc.document_id),
         title: doc.document_name,
-        status,
+        status: statusOf(doc),
+        archived: !!doc.archived_at,
+        archivedAt: doc.archived_at,
+        typeOfDocument: doc.type_of_document,
         endDate: toDateString(doc.comments_due_date),
         description: doc.type_of_act || doc.summary || null,
         publishDate: toDateString(doc.posted_on),
-        submissions: await countSubmissions(billKey),
+        submissions: doc.submissions,
         summary: doc.summary || null,
         created_at: doc.created_at
-      };
-    }));
-
-    res.json({ ok: true, data: consultations });
+      }))
+    });
   } catch (err) {
-    console.error('Error fetching consultations:', err);
-    try {
-      res.json({ ok: true, data: await getDefaultConsultations() });
-    } catch (fallbackErr) {
-      next(err);
-    }
+    next(err);
   }
 }
 

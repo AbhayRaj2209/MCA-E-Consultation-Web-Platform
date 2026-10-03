@@ -15,6 +15,7 @@ import SentimentDistributionCard from '@/components/SentimentDistributionCard';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { apiFetch } from '@/lib/api';
+import { toFiveScale } from '@/lib/confidence';
 
 const normalizeStakeholderType = (value: string | null | undefined): string => {
   const raw = String(value || '').trim().toLowerCase();
@@ -183,8 +184,8 @@ const ConsultationDetail = () => {
     }
   };
 
-  // Use consultation ID from URL, fallback to available word cloud data
-  const wordCloud = wordCloudData[consultationId] || wordCloudData[1] || {};
+  // Word-cloud images exist only for the original bills; newer bills show the empty state
+  const wordCloud = wordCloudData[consultationId] || {};
 
   // Text-to-speech function
   const speakText = (text: string, sectionId: string) => {
@@ -633,7 +634,7 @@ const ConsultationDetail = () => {
             date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : (r.date || ''),
             stance: normalizedStance,
             summary: r.summary || r.comment_data || (r.comment_data ? String(r.comment_data).slice(0, 200) : ''),
-            confidenceScore_based_on_ensemble_model: r.confidence_score || r.confidenceScore_based_on_ensemble_model || 0,
+            confidenceScore_based_on_ensemble_model: toFiveScale(r.confidence),
             confidence: r.confidence || 0,
             strong_opinion: r.strong_opinion || false,
             originalText: r.comment_data || r.originalText || '',

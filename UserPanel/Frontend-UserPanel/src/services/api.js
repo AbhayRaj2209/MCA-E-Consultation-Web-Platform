@@ -17,6 +17,13 @@ export const sendOtp = (phone) =>
 export const submitComment = (payload) =>
   request("/api/submit-comment", { method: "POST", body: JSON.stringify(payload) });
 
+// Open (non-archived) consultations published from the admin panel
+export const fetchDocuments = () => request("/api/documents", { cache: "no-store" });
+
+export const fetchDocument = (documentId) => request(`/api/documents/${documentId}`, { cache: "no-store" });
+
+export const attachmentUrl = (documentId) => `${API_BASE_URL}/api/documents/${documentId}/attachment`;
+
 export const fetchDocumentSummary = (documentId, lang) =>
   request(`/api/documents/${documentId}/summary?lang=${encodeURIComponent(lang)}`, { cache: "no-store" });
 

@@ -1,7 +1,8 @@
 # MCA E-Consultation — User Panel Backend
 
-Express API that lets citizens submit feedback on draft legislation. Every submission is
-validated, analysed for sentiment by the FastAPI ML service, and stored in PostgreSQL (Neon).
+Express API for the public portal: lists the consultations (bills) published from the admin panel,
+serves each bill's text and PDF, and accepts citizen feedback. Every submission is validated,
+analysed for sentiment by the FastAPI ML service, and stored in PostgreSQL (Neon).
 
 > **OTP phone verification is built but currently switched off.** Turn it on with
 > `OTP_ENABLED=true` here and `VITE_OTP_ENABLED=true` in the frontend (plus Twilio keys).
@@ -27,7 +28,8 @@ Backend-UserPanel/
 │   │   ├── otp.service.js         # Twilio Verify SMS OTP (or console mode for local dev)
 │   │   └── sentiment.service.js   # FastAPI ML sentiment model
 │   ├── models/
-│   │   └── comment.model.js       # Database queries (parameterized)
+│   │   ├── comment.model.js       # INSERT into comments (parameterized)
+│   │   └── document.model.js      # Open (non-archived) bills
 │   ├── middleware/
 │   │   ├── validate.js            # Input validation rules
 │   │   ├── rateLimiters.js        # Per-IP rate limits
@@ -37,9 +39,6 @@ Backend-UserPanel/
 │   └── utils/
 │       ├── AppError.js            # Error with a client-safe message
 │       └── mask.js                # Masks Aadhaar/PAN and phone numbers
-├── migrations/                    # SQL schema migrations
-└── scripts/
-    └── run-migration.js           # `npm run migrate`
 ```
 
 ## Request flow: submitting feedback
@@ -66,7 +65,10 @@ npm start                # production
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | POST | `/api/otp/send` | Send a 6-digit OTP (only when `OTP_ENABLED=true`) |
-| POST | `/api/submit-comment` | Validate, analyse sentiment, store feedback |
+| GET | `/api/documents` | Open consultations (archived bills are hidden) |
+| GET | `/api/documents/:id` | One consultation incl. full text |
+| GET | `/api/documents/:id/attachment` | The bill's official PDF, if the admin uploaded one |
+| POST | `/api/submit-comment` | Validate, analyse sentiment, store feedback (open bills only) |
 | GET | `/api/documents/:id/summary?lang=en` | Section-wise summary with text-to-speech audio |
 | GET | `/api/documents/:id/audio-proxy?u=` | Streams Google TTS audio (host allow-listed) |
 | GET | `/health` | Health check |
@@ -133,5 +135,5 @@ Comments are read by the Admin Panel backend; this service exposes no endpoint t
 
 ## Database
 
-Table `bill_1_comments` — see `migrations/` for schema changes. Run `npm run migrate` to add the
-sentiment columns (`confidence`, `strong_opinion`, `keywords`).
+Reads `documents` (bills) and writes to `comments` (one table for every bill, keyed by `document_id`).
+The schema is created and migrated by the admin backend — see `AdminPanel/backend`.

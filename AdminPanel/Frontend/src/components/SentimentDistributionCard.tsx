@@ -142,7 +142,9 @@ const SentimentDistributionCard: React.FC<SentimentDistributionCardProps> = ({ s
                 {/* Footer: Confidence Score */}
                 <div className="mt-6 flex justify-center">
                     <Badge variant="outline" className="px-4 py-1.5 bg-slate-50 text-slate-600 border-slate-200 font-normal text-sm">
-                        Confidence Score: <span className="font-semibold text-slate-800 ml-1">4.2 / 5</span>
+                        Confidence Score: <span className="font-semibold text-slate-800 ml-1">
+                            {avgConfidence > 0 ? `${avgConfidence.toFixed(1)} / 5` : 'Not available'}
+                        </span>
                     </Badge>
                 </div>
             </CardContent>

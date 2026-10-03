@@ -1,5 +1,5 @@
 const pool = require('../config/db');
-const { isValidBill, billToDocumentId, commentsTable } = require('../config/bills');
+const { parseBill } = require('../config/bills');
 const { getGroupSummary } = require('../services/summary.service');
 
 const invalidBill = (res) => res.status(400).json({ ok: false, error: 'Invalid bill name' });
@@ -14,11 +14,12 @@ const SECTION_COLUMNS = {
 // GET /api/sentiment/:bill  -> [{ sentiment, count }]
 async function getSentimentCounts(req, res, next) {
   try {
-    const { bill } = req.params;
-    if (!isValidBill(bill)) return invalidBill(res);
+    const documentId = parseBill(req.params.bill);
+    if (!documentId) return invalidBill(res);
 
     const result = await pool.query(
-      `SELECT sentiment, COUNT(*) as count FROM ${commentsTable(bill)} GROUP BY sentiment ORDER BY count DESC`
+      'SELECT sentiment, COUNT(*) as count FROM comments WHERE document_id = $1 GROUP BY sentiment ORDER BY count DESC',
+      [documentId]
     );
     res.json({ ok: true, data: result.rows });
   } catch (err) {
@@ -29,12 +30,12 @@ async function getSentimentCounts(req, res, next) {
 // GET /api/summaries/:bill  -> overall / positive / negative summary of the document
 async function getSummaries(req, res, next) {
   try {
-    const { bill } = req.params;
-    if (!isValidBill(bill)) return invalidBill(res);
+    const documentId = parseBill(req.params.bill);
+    if (!documentId) return invalidBill(res);
 
     const result = await pool.query(
       'SELECT summary, positive_summary, negative_summary FROM documents WHERE document_id = $1 LIMIT 1',
-      [billToDocumentId(bill)]
+      [documentId]
     );
     const row = result.rows[0] || {};
 
@@ -54,13 +55,13 @@ async function getSummaries(req, res, next) {
 // GET /api/sections/:bill  -> per-section overall summaries
 async function getSectionSummaries(req, res, next) {
   try {
-    const { bill } = req.params;
-    if (!isValidBill(bill)) return invalidBill(res);
+    const documentId = parseBill(req.params.bill);
+    if (!documentId) return invalidBill(res);
 
     const result = await pool.query(
       `SELECT section_1_summary, section_2_summary, section_3_summary
        FROM documents WHERE document_id = $1 LIMIT 1`,
-      [billToDocumentId(bill)]
+      [documentId]
     );
     const row = result.rows[0] || {};
 
@@ -80,14 +81,14 @@ async function getSectionSummaries(req, res, next) {
 // GET /api/section-sentiments/:bill  -> per-section positive / negative summaries
 async function getSectionSentiments(req, res, next) {
   try {
-    const { bill } = req.params;
-    if (!isValidBill(bill)) return invalidBill(res);
+    const documentId = parseBill(req.params.bill);
+    if (!documentId) return invalidBill(res);
 
     const result = await pool.query(
       `SELECT section1_positive, section1_negative, section2_positive, section2_negative,
               section3_positive, section3_negative
        FROM documents WHERE document_id = $1 LIMIT 1`,
-      [billToDocumentId(bill)]
+      [documentId]
     );
 
     if (result.rows.length === 0) return res.json({ ok: true, data: null });
@@ -110,17 +111,16 @@ async function getSectionSentiments(req, res, next) {
 // Comments ko group karke summary model se summary banata hai aur documents table me save karta hai
 async function generateOverview(req, res, next) {
   try {
-    const { bill } = req.params;
+    const documentId = parseBill(req.params.bill);
     const { type, section } = req.body;
-    if (!isValidBill(bill)) return res.status(400).json({ ok: false, error: 'Invalid bill ID' });
+    if (!documentId) return res.status(400).json({ ok: false, error: 'Invalid bill ID' });
     if (section && !SECTION_COLUMNS[section]) {
       return res.status(400).json({ ok: false, error: 'Invalid section name' });
     }
 
-    const documentId = billToDocumentId(bill);
-    const params = section ? [section] : [];
+    const params = section ? [documentId, section] : [documentId];
     const result = await pool.query(
-      `SELECT comment_data, summary, sentiment, section FROM ${commentsTable(bill)}${section ? ' WHERE section = $1' : ''}`,
+      `SELECT comment_data, summary, sentiment, section FROM comments WHERE document_id = $1${section ? ' AND section = $2' : ''}`,
       params
     );
 
