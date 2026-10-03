@@ -231,7 +231,7 @@ export const CommentModal = ({ isOpen, onClose, onSuccess, comment, uploadedFile
       console.error('Error submitting form:', error);
       toast({
         title: "Error",
-        description: "Failed to submit comments. Please try again.",
+        description: "Could not reach the server. Please check your connection and try again.",
         variant: "destructive"
       });
     } finally {
