@@ -2,6 +2,7 @@ import React from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import goiLogo from "@/assets/goi-logo.png";
 
 export const Header = () => {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export const Header = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <img
-              src="/src/assets/goi-logo.png"
+              src={goiLogo}
               alt="Project Saaransh Logo"
               className="h-10 w-10 object-cover"
             />
