@@ -48,6 +48,27 @@ UserPanel/
 └── Backend-UserPanel/              # See Backend-UserPanel/README.md
 ```
 
+## Saaransh RAG assistant
+
+The user panel includes an `/assistant` page with a LangChain JavaScript RAG chatbot. The
+backend loads `Backend-UserPanel/data/Saaransh_Interview_QA.pdf`, splits it into overlapping
+chunks, embeds the chunks into an in-memory vector store, retrieves the most relevant chunks
+for each question, and asks the configured chat model to answer only from that context. The
+response includes the source PDF page numbers.
+
+To enable it locally:
+
+```bash
+cd UserPanel/Backend-UserPanel
+npm install
+# Add OPENAI_API_KEY to .env
+npm run dev
+```
+
+`OPENAI_MODEL` defaults to `gpt-4o-mini`. Set `RAG_PDF_PATH` when deploying or when using a
+different PDF. The PDF is indexed lazily on the first question and cached in memory until the
+server restarts.
+
 ## Feedback submission flow
 
 1. Citizen writes a comment on a document page and clicks **Submit**.

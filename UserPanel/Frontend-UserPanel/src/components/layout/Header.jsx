@@ -1,5 +1,5 @@
 import React from "react";
-import { Search } from "lucide-react";
+import { MessageCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { GOI_LOGO as goiLogo } from "@/config/constants";
@@ -74,9 +74,25 @@ export const Header = () => {
                 Consultation Listing
               </a>
             </li>
+            <li>
+              <a href="/assistant" className="block px-4 py-3 text-white hover:bg-gov-blue text-sm">
+                Ask Saaransh
+              </a>
+            </li>
           </ul>
         </div>
       </nav>
+
+      <button
+        type="button"
+        onClick={() => navigate("/assistant")}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-gov-orange px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gov-orange focus-visible:ring-offset-2"
+        aria-label="Open Saaransh chatbot"
+        title="Ask Saaransh"
+      >
+        <MessageCircle className="h-5 w-5" />
+        <span>Ask Saaransh</span>
+      </button>
     </header>
   );
 };

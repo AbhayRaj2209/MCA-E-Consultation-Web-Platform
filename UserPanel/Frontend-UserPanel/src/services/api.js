@@ -27,6 +27,12 @@ export const attachmentUrl = (documentId) => `${API_BASE_URL}/api/documents/${do
 export const fetchDocumentSummary = (documentId, lang) =>
   request(`/api/documents/${documentId}/summary?lang=${encodeURIComponent(lang)}`, { cache: "no-store" });
 
+export const askRagAssistant = (question, history) =>
+  request("/api/rag/chat", {
+    method: "POST",
+    body: JSON.stringify({ question, history }),
+  });
+
 // Backend relative paths (e.g. audio proxy "/api/...") ko full URL banata hai
 export const resolveApiUrl = (url) => {
   if (!url || typeof url !== "string") return null;

@@ -11,6 +11,7 @@ import DigitalCompetitionBill from "./pages/documents/DigitalCompetitionBill";
 import CompaniesAmendmentBill from "./pages/documents/CompaniesAmendmentBill";
 import DocumentPage from "./pages/documents/DocumentPage";
 import NotFound from "./pages/NotFound";
+import SaaranshAssistant from "./pages/SaaranshAssistant";
 
 const App = () => (
   <>
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/document-details2" element={<DigitalCompetitionBill />} />
           <Route path="/document-details3" element={<CompaniesAmendmentBill />} />
           <Route path="/documents/:id" element={<DocumentPage />} />
+          <Route path="/assistant" element={<SaaranshAssistant />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Footer />

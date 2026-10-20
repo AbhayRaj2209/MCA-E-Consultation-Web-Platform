@@ -8,6 +8,7 @@ const errorHandler = require('./middleware/errorHandler');
 const commentRoutes = require('./routes/comment.routes');
 const otpRoutes = require('./routes/otp.routes');
 const documentRoutes = require('./routes/document.routes');
+const ragRoutes = require('./routes/rag.routes');
 const { OTP_ENABLED } = require('./services/otp.service');
 
 const app = express();
@@ -31,6 +32,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use('/api', commentRoutes);
 if (OTP_ENABLED) app.use('/api', otpRoutes);
 app.use('/api', documentRoutes);
+app.use('/api', ragRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'Server is running' });
