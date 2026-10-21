@@ -57,6 +57,18 @@ cd AdminPanel/Frontend && npm install && npm run dev
 Each backend needs a `.env` with `DATABASE_URL` (PostgreSQL) and `FASTAPI_URL=http://127.0.0.1:8001`
 (the admin backend also needs `JWT_SECRET`); each frontend needs `VITE_API_URL` pointing at its backend.
 
+### Deploying the ML service on Render
+
+The repository includes [`render.yaml`](render.yaml), which deploys `models-new` as a Python web
+service. In Render, create a Blueprint from this repository and select the `saaransh-ml` service.
+The service must use an instance with enough memory for both the RoBERTa sentiment model and the
+BART summarizer; the smallest instance may restart during model loading.
+
+After the deployment succeeds, copy the service URL (for example,
+`https://saaransh-ml.onrender.com`) into `FASTAPI_URL` in both production Node backends. Verify
+`GET /` returns `{"message":"API running 🚀"}` and `POST /predict` returns a sentiment before
+redeploying the Node backends.
+
 ## Key features
 
 - Multilingual document summaries (English, Hindi, Spanish, Tamil) with text-to-speech

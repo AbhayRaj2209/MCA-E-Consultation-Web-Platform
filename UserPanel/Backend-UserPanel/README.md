@@ -126,7 +126,7 @@ Comments are read by the Admin Panel backend; this service exposes no endpoint t
 | `DATABASE_URL` | PostgreSQL connection string (Neon) |
 | `PORT` | Server port (default 5046) |
 | `NODE_ENV` | `development` / `production` |
-| `FASTAPI_URL` | Sentiment model service URL |
+| `FASTAPI_URL` | Sentiment model service URL. Required in production; do not use `127.0.0.1` unless the ML service runs in the same container. |
 | `OTP_ENABLED` | `true` to require OTP before submitting (default `false`) |
 | `OTP_PROVIDER` | `twilio` (real SMS, default) or `console` (OTP printed in server log — local testing only) |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` | Twilio Verify credentials |

@@ -123,7 +123,7 @@ Open the app, choose **Create an account**, and sign in.
 | `JWT_SECRET` | Long random string used to sign login tokens (**required in production**) |
 | `JWT_EXPIRES_IN` | Session length, default `8h` |
 | `ALLOWED_SIGNUP_DOMAINS` | Optional, e.g. `gov.in,nic.in` — restricts who can sign up |
-| `FASTAPI_URL` | Sentiment model service |
+| `FASTAPI_URL` | Sentiment model service URL. In production, use the deployed ML service URL rather than `127.0.0.1`. |
 | `GROUP_SUMMARY_URL` | Group summarisation model used by "Generate Overview" |
 | `TRUST_PROXY` | Reverse proxies in front of the server (Render = 1) |
 
